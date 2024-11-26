@@ -14,6 +14,8 @@ pub struct Model {
     pub status: String,
     pub shipping_address_id: i32,
     pub payment_method_id: i32,
+    pub discount_code_id: Option<i32>,
+    pub discount_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -36,6 +38,14 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Customers,
+    #[sea_orm(
+        belongs_to = "super::discounts::Entity",
+        from = "Column::DiscountId",
+        to = "super::discounts::Column::DiscountId",
+        on_update = "NoAction",
+        on_delete = "SetNull"
+    )]
+    Discounts,
     #[sea_orm(has_many = "super::order_items::Entity")]
     OrderItems,
     #[sea_orm(
@@ -63,6 +73,12 @@ impl Related<super::bills::Entity> for Entity {
 impl Related<super::customers::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Customers.def()
+    }
+}
+
+impl Related<super::discounts::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Discounts.def()
     }
 }
 

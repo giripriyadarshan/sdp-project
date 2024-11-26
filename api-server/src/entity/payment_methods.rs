@@ -15,15 +15,23 @@ pub struct Model {
     pub account_holder_name: Option<String>,
     pub card_number: Option<String>,
     pub card_expiration_date: Option<Date>,
-    pub card_type: Option<String>,
     pub iban: Option<String>,
     pub upi_id: Option<String>,
     pub bank_account_number: Option<String>,
     pub ifsc_code: Option<String>,
+    pub card_type_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::card_types::Entity",
+        from = "Column::CardTypeId",
+        to = "super::card_types::Column::CardTypeId",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    CardTypes,
     #[sea_orm(
         belongs_to = "super::customers::Entity",
         from = "(Column::CustomerId, Column::CustomerId)",
@@ -34,6 +42,12 @@ pub enum Relation {
     Customers,
     #[sea_orm(has_many = "super::orders::Entity")]
     Orders,
+}
+
+impl Related<super::card_types::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::CardTypes.def()
+    }
 }
 
 impl Related<super::customers::Entity> for Entity {

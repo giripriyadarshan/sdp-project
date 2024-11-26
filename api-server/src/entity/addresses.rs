@@ -8,17 +8,25 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub address_id: i32,
     pub customer_id: i32,
-    pub address_type: String,
     pub street_address: String,
     pub city: String,
     pub state: Option<String>,
     pub postal_code: String,
     pub country: String,
     pub is_default: Option<bool>,
+    pub address_type_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(
+        belongs_to = "super::address_types::Entity",
+        from = "Column::AddressTypeId",
+        to = "super::address_types::Column::AddressTypeId",
+        on_update = "NoAction",
+        on_delete = "NoAction"
+    )]
+    AddressTypes,
     #[sea_orm(
         belongs_to = "super::customers::Entity",
         from = "(Column::CustomerId, Column::CustomerId)",
@@ -29,6 +37,12 @@ pub enum Relation {
     Customers,
     #[sea_orm(has_many = "super::orders::Entity")]
     Orders,
+}
+
+impl Related<super::address_types::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::AddressTypes.def()
+    }
 }
 
 impl Related<super::customers::Entity> for Entity {

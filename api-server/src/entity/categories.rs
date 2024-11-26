@@ -21,8 +21,16 @@ pub enum Relation {
         on_delete = "SetNull"
     )]
     SelfRef,
+    #[sea_orm(has_many = "super::discounts::Entity")]
+    Discounts,
     #[sea_orm(has_many = "super::products::Entity")]
     Products,
+}
+
+impl Related<super::discounts::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Discounts.def()
+    }
 }
 
 impl Related<super::products::Entity> for Entity {

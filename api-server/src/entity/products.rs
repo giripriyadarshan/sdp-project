@@ -31,10 +31,10 @@ pub enum Relation {
         on_delete = "SetNull"
     )]
     Categories,
+    #[sea_orm(has_many = "super::discounts::Entity")]
+    Discounts,
     #[sea_orm(has_many = "super::order_items::Entity")]
     OrderItems,
-    #[sea_orm(has_many = "super::product_discounts::Entity")]
-    ProductDiscounts,
     #[sea_orm(has_many = "super::product_variant_options::Entity")]
     ProductVariantOptions,
     #[sea_orm(
@@ -69,15 +69,15 @@ impl Related<super::categories::Entity> for Entity {
     }
 }
 
-impl Related<super::order_items::Entity> for Entity {
+impl Related<super::discounts::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::OrderItems.def()
+        Relation::Discounts.def()
     }
 }
 
-impl Related<super::product_discounts::Entity> for Entity {
+impl Related<super::order_items::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::ProductDiscounts.def()
+        Relation::OrderItems.def()
     }
 }
 

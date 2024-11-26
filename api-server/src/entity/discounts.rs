@@ -3,28 +3,36 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
-#[sea_orm(table_name = "order_items")]
+#[sea_orm(table_name = "discounts")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub order_item_id: i32,
-    pub order_id: i32,
-    pub product_id: i32,
-    pub quantity: i32,
-    #[sea_orm(column_type = "Decimal(Some((10, 2)))")]
-    pub unit_price: Decimal,
-    #[sea_orm(column_type = "Decimal(Some((10, 2)))")]
-    pub discount_amount: Decimal,
+    pub discount_id: i32,
+    pub code: Option<String>,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub description: Option<String>,
+    #[sea_orm(column_type = "Decimal(Some((5, 2)))")]
+    pub discount_value: Decimal,
+    pub discount_type: String,
+    pub valid_from: Option<DateTimeWithTimeZone>,
+    pub valid_until: Option<DateTimeWithTimeZone>,
+    pub max_uses: Option<i32>,
+    pub times_used: Option<i32>,
+    pub product_id: Option<i32>,
+    pub category_id: Option<i32>,
+    pub min_quantity: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::orders::Entity",
-        from = "(Column::OrderId, Column::OrderId)",
-        to = "(super::orders::Column::OrderId, super::orders::Column::OrderId)",
+        belongs_to = "super::categories::Entity",
+        from = "Column::CategoryId",
+        to = "super::categories::Column::CategoryId",
         on_update = "NoAction",
-        on_delete = "Cascade"
+        on_delete = "SetNull"
     )]
+    Categories,
+    #[sea_orm(has_many = "super::orders::Entity")]
     Orders,
     #[sea_orm(
         belongs_to = "super::products::Entity",
@@ -34,6 +42,12 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     Products,
+}
+
+impl Related<super::categories::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Categories.def()
+    }
 }
 
 impl Related<super::orders::Entity> for Entity {
