@@ -19,3 +19,4 @@ pub mod reviews;
 pub mod sea_orm_active_enums;
 pub mod shopping_carts;
 pub mod suppliers;
+pub mod users;

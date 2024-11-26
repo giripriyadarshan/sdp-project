@@ -16,3 +16,4 @@ pub use super::products::Entity as Products;
 pub use super::reviews::Entity as Reviews;
 pub use super::shopping_carts::Entity as ShoppingCarts;
 pub use super::suppliers::Entity as Suppliers;
+pub use super::users::Entity as Users;

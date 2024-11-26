@@ -9,10 +9,9 @@ pub struct Model {
     pub customer_id: i32,
     pub first_name: String,
     pub last_name: String,
-    #[sea_orm(unique)]
-    pub email: String,
-    pub password: String,
     pub registration_date: Option<DateTimeWithTimeZone>,
+    #[sea_orm(unique)]
+    pub user_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -27,6 +26,14 @@ pub enum Relation {
     Reviews,
     #[sea_orm(has_many = "super::shopping_carts::Entity")]
     ShoppingCarts,
+    #[sea_orm(
+        belongs_to = "super::users::Entity",
+        from = "Column::UserId",
+        to = "super::users::Column::UserId",
+        on_update = "NoAction",
+        on_delete = "Cascade"
+    )]
+    Users,
 }
 
 impl Related<super::addresses::Entity> for Entity {
@@ -56,6 +63,12 @@ impl Related<super::reviews::Entity> for Entity {
 impl Related<super::shopping_carts::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::ShoppingCarts.def()
+    }
+}
+
+impl Related<super::users::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Users.def()
     }
 }
 
