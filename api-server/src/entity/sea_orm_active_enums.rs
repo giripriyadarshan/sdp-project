@@ -18,3 +18,11 @@ pub enum PaymentMethodType {
     #[sea_orm(string_value = "upi")]
     Upi,
 }
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "String", db_type = "Enum", enum_name = "user_role")]
+pub enum UserRole {
+    #[sea_orm(string_value = "customer")]
+    Customer,
+    #[sea_orm(string_value = "supplier")]
+    Supplier,
+}
