@@ -15,8 +15,8 @@ pub struct Model {
     pub category_id: Option<i32>,
     pub supplier_id: Option<i32>,
     pub stock_quantity: i32,
-    pub image_path: String,
     pub base_product_id: Option<i32>,
+    pub media_paths: Option<Vec<String>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -13,6 +13,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub review_text: Option<String>,
     pub review_date: Option<DateTimeWithTimeZone>,
+    pub media_paths: Option<Vec<String>>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
