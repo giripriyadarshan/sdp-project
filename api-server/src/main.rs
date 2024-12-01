@@ -1,4 +1,3 @@
-mod auth;
 mod entity;
 mod error;
 mod graphql;
@@ -31,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!(
         "GraphQL server running at http://localhost:{}/",
-        env::var("PORT").unwrap_or_else(|_| "Err: No PORT SET".to_sthetring())
+        env::var("PORT").unwrap_or_else(|_| "Err: No PORT SET".to_string())
     );
 
     axum::serve(
