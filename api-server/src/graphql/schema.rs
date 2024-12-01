@@ -1,3 +1,4 @@
+use crate::auth::auth::{RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER};
 use crate::models::orders::{Orders, RegisterOrder};
 use crate::models::user::{LoginUser, RegisterCustomer};
 use crate::models::{products::Products, user::Customers};
@@ -6,6 +7,12 @@ use async_graphql::{Context, EmptySubscription, Object, Schema};
 use axum::response;
 use axum::response::IntoResponse;
 use sea_orm::DatabaseConnection;
+
+macro_rules! role_guard {
+    ($($role:expr),*) => {
+        RoleGuard::new(vec![$($role),*])
+    };
+}
 
 pub struct QueryRoot;
 pub struct MutationRoot;
@@ -22,6 +29,7 @@ impl QueryRoot {
         unimplemented!()
     }
 
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
     async fn customer_profile(&self, ctx: &Context<'_>) -> Result<Customers, async_graphql::Error> {
         // Implement customer profile query logic
         unimplemented!()

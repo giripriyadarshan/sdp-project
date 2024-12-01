@@ -1,4 +1,3 @@
-// src/main.rs
 mod auth;
 mod entity;
 mod error;
@@ -30,7 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new().route("/", get(graphiql).post_service(GraphQL::new(schema)));
 
-    println!("GraphQL server running at http://localhost:8000/graphql");
+    println!(
+        "GraphQL server running at http://localhost:{}/",
+        env::var("PORT").unwrap_or_else(|_| "Err: No PORT SET".to_sthetring())
+    );
+
     axum::serve(
         TcpListener::bind(format!(
             "0.0.0.0:{}",
