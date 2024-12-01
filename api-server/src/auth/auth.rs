@@ -84,24 +84,24 @@ impl Auth {
         )
     }
 
-    // TODO: implement token revocation in GraphQL models (mutation)
-    pub fn revoke_token(token: &str) -> Result<(), jsonwebtoken::errors::Error> {
-        let claims = Auth::verify_token(token)?;
-        let now = Utc::now();
-        let new_claims = Claims {
-            user_id: claims.user_id,
-            role: claims.role,
-            exp: now.timestamp(),
-            iat: now.timestamp(),
-        };
-
-        encode(
-            &Header::default(),
-            &new_claims,
-            &EncodingKey::from_secret("your_secret_key".as_ref()),
-        )?;
-        Ok(())
-    }
+    // // TODO: implement token revocation in GraphQL models (mutation) or skip implementation if it takes too much time/resources.
+    // pub fn revoke_token(token: &str) -> Result<(), jsonwebtoken::errors::Error> {
+    //     let claims = Auth::verify_token(token)?;
+    //     let now = Utc::now();
+    //     let new_claims = Claims {
+    //         user_id: claims.user_id,
+    //         role: claims.role,
+    //         exp: now.timestamp(),
+    //         iat: now.timestamp(),
+    //     };
+    //
+    //     encode(
+    //         &Header::default(),
+    //         &new_claims,
+    //         &EncodingKey::from_secret("your_secret_key".as_ref()),
+    //     )?;
+    //     Ok(())
+    // }
 }
 
 pub const ROLE_SUPPLIER: &str = "supplier";
