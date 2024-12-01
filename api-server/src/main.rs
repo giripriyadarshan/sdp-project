@@ -1,3 +1,4 @@
+mod auth;
 mod entity;
 mod error;
 mod graphql;
