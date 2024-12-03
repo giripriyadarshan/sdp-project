@@ -14,7 +14,6 @@ pub struct Model {
     pub status: String,
     pub shipping_address_id: i32,
     pub payment_method_id: i32,
-    pub discount_code_id: Option<i32>,
     pub discount_id: Option<i32>,
 }
 

@@ -13,6 +13,7 @@ pub struct Model {
     pub password: String,
     pub role: UserRole,
     pub created_at: Option<DateTimeWithTimeZone>,
+    pub email_verified: Option<bool>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

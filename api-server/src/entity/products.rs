@@ -35,8 +35,6 @@ pub enum Relation {
     Discounts,
     #[sea_orm(has_many = "super::order_items::Entity")]
     OrderItems,
-    #[sea_orm(has_many = "super::product_variant_options::Entity")]
-    ProductVariantOptions,
     #[sea_orm(
         belongs_to = "Entity",
         from = "Column::BaseProductId",
@@ -78,12 +76,6 @@ impl Related<super::discounts::Entity> for Entity {
 impl Related<super::order_items::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::OrderItems.def()
-    }
-}
-
-impl Related<super::product_variant_options::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::ProductVariantOptions.def()
     }
 }
 

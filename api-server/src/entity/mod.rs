@@ -13,7 +13,6 @@ pub mod discounts;
 pub mod order_items;
 pub mod orders;
 pub mod payment_methods;
-pub mod product_variant_options;
 pub mod products;
 pub mod reviews;
 pub mod sea_orm_active_enums;
