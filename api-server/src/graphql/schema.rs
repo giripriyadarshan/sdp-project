@@ -1,5 +1,6 @@
 use crate::auth::auth::{RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER};
 use crate::models::orders::{Orders, RegisterOrder};
+use crate::models::products::Categories;
 use crate::models::user::{LoginUser, RegisterCustomer};
 use crate::models::{products::Products, user::Customers};
 use async_graphql::http::GraphiQLSource;
@@ -19,7 +20,7 @@ pub struct MutationRoot;
 
 #[Object]
 impl QueryRoot {
-    async fn products(
+    async fn products_with_id(
         &self,
         ctx: &Context<'_>,
         category_id: Option<i32>,
@@ -28,7 +29,7 @@ impl QueryRoot {
     ) -> Result<Vec<Products>, async_graphql::Error> {
         use crate::entity::products;
         let db = ctx.data::<DatabaseConnection>()?;
-        // Implement product query logic
+
         let products = products::Entity::find()
             .filter(match (category_id, supplier_id, base_product_id) {
                 (Some(category_id), None, None) => products::Column::CategoryId.eq(category_id),
@@ -44,22 +45,45 @@ impl QueryRoot {
             .all(db)
             .await?;
 
-        let products: Vec<Products> = products
+        let products: Vec<Products> = products.into_iter().map(|product| product.into()).collect();
+
+        Ok(products)
+    }
+
+    async fn products_with_name(
+        &self,
+        ctx: &Context<'_>,
+        name: String,
+    ) -> Result<Vec<Products>, async_graphql::Error> {
+        use crate::entity::products;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let products = products::Entity::find()
+            .filter(products::Column::Name.contains(name))
+            .all(db)
+            .await?;
+
+        let products: Vec<Products> = products.into_iter().map(|product| product.into()).collect();
+
+        Ok(products)
+    }
+
+    async fn categories(&self, ctx: &Context<'_>) -> Result<Vec<Categories>, async_graphql::Error> {
+        use crate::entity::categories;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let categories = categories::Entity::find().all(db).await?;
+
+        let categories: Vec<Categories> = categories
             .into_iter()
-            .map(|product| Products {
-                product_id: product.product_id,
-                name: product.name,
-                description: product.description,
-                base_price: product.base_price.to_string(),
-                category_id: product.category_id,
-                supplier_id: product.supplier_id,
-                stock_quantity: product.stock_quantity,
-                media_paths: product.media_paths,
-                base_product_id: product.base_product_id,
+            .map(|category| Categories {
+                category_id: category.category_id,
+                name: category.name,
+                parent_category_id: category.parent_category_id,
             })
             .collect();
 
-        Ok(products)
+        Ok(categories)
     }
 
     #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]

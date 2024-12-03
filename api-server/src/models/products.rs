@@ -1,5 +1,7 @@
+use crate::entity::products::Model as ProductsModel;
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::prelude::DateTimeWithTimeZone;
+use std::string::ToString;
 
 #[derive(SimpleObject)]
 pub struct Products {
@@ -12,6 +14,22 @@ pub struct Products {
     pub stock_quantity: i32,
     pub media_paths: Option<Vec<String>>,
     pub base_product_id: Option<i32>,
+}
+
+impl From<ProductsModel> for Products {
+    fn from(val: ProductsModel) -> Products {
+        Products {
+            product_id: val.product_id,
+            name: val.name,
+            description: val.description,
+            base_price: val.base_price.to_string(),
+            category_id: val.category_id,
+            supplier_id: val.supplier_id,
+            stock_quantity: val.stock_quantity,
+            media_paths: val.media_paths,
+            base_product_id: val.base_product_id,
+        }
+    }
 }
 
 #[derive(InputObject)]
