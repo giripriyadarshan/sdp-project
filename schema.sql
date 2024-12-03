@@ -115,7 +115,7 @@ create table suppliers
     supplier_id   serial
         primary key,
     name          varchar(100) not null,
-    contact_phone varchar(20),
+    contact_phone text,
     user_id       integer      not null
         unique
         constraint fk_user_supplier
@@ -319,4 +319,5 @@ create index idx_discounts_category
 
 create index idx_discounts_validity
     on discounts (valid_from, valid_until);
+
 

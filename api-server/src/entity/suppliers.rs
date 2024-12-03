@@ -8,6 +8,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub supplier_id: i32,
     pub name: String,
+    #[sea_orm(column_type = "Text", nullable)]
     pub contact_phone: Option<String>,
     #[sea_orm(unique)]
     pub user_id: i32,
