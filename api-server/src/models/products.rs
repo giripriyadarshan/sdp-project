@@ -40,23 +40,6 @@ pub struct RegisterCategory {
 }
 
 #[derive(SimpleObject)]
-pub struct ProductVariantOptions {
-    pub option_id: i32,
-    pub product_id: i32,
-    pub option_name: String,
-    pub option_value: String,
-    pub price_adjustment: Option<i32>,
-}
-
-#[derive(InputObject)]
-pub struct RegisterProductVariantOption {
-    pub product_id: i32,
-    pub option_name: String,
-    pub option_value: String,
-    pub price_adjustment: Option<i32>,
-}
-
-#[derive(SimpleObject)]
 pub struct Discounts {
     pub discount_id: i32,
     pub code: Option<String>,

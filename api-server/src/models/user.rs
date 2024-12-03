@@ -8,6 +8,7 @@ pub struct Users {
     pub password: String,
     pub role: String,
     pub created_at: Option<DateTimeWithTimeZone>,
+    pub email_verified: bool,
 }
 
 #[derive(InputObject)]
