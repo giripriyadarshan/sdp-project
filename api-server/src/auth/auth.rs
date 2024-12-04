@@ -5,7 +5,9 @@ use argon2::{
 use async_graphql::*;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use lazy_regex::regex;
 use serde::{Deserialize, Serialize};
+use std::env;
 
 //TODO: implement env vars for secret key (also check if 2 secret keys are needed)
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,25 +48,23 @@ impl Auth {
             iat: now.timestamp(),
         };
 
+        let secret = env::var("TOKEN_SECRET").expect("TOKEN_SECRET must be set");
+
         encode(
             &Header::default(),
             &claims,
-            &EncodingKey::from_secret("your_secret_key".as_ref()),
+            &EncodingKey::from_secret(secret.as_ref()),
         )
     }
 
     pub fn verify_token(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+        let secret = env::var("TOKEN_SECRET").expect("TOKEN_SECRET must be set");
         let token_data = decode::<Claims>(
             token,
-            &DecodingKey::from_secret("your_secret_key".as_ref()),
+            &DecodingKey::from_secret(secret.as_ref()),
             &Validation::default(),
         )?;
         Ok(token_data.claims)
-    }
-
-    pub fn verify_role(token: &str, role: &str) -> Result<bool, jsonwebtoken::errors::Error> {
-        let claims = Auth::verify_token(token)?;
-        Ok(claims.role == role)
     }
 
     pub fn refresh_token(token: &str) -> Result<String, jsonwebtoken::errors::Error> {
@@ -77,11 +77,25 @@ impl Auth {
             iat: now.timestamp(),
         };
 
+        let secret = env::var("TOKEN_SECRET").expect("TOKEN_SECRET must be set");
         encode(
             &Header::default(),
             &new_claims,
-            &EncodingKey::from_secret("your_secret_key".as_ref()),
+            &EncodingKey::from_secret(secret.as_ref()),
         )
+    }
+
+    pub fn check_password_strength(password: &str) -> Result<(), &'static str> {
+        if password.len() < 8
+            || !regex!(r"[A-Z]").is_match(password)
+            || !regex!(r"[0-9]").is_match(password)
+            || !regex!(r"[a-z]").is_match(password)
+            || !regex!(r"[!@#$%^&*]").is_match(password)
+        {
+            return Err("You're not the only person who knows about the developer tools in the browser. Nice try bro");
+        }
+
+        Ok(())
     }
 
     // // TODO: implement token revocation in GraphQL models (mutation) or skip implementation if it takes too much time/resources.

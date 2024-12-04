@@ -1,14 +1,29 @@
+use crate::entity::users::Model as UsersModel;
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::prelude::DateTimeWithTimeZone;
+use sea_orm::ActiveEnum;
 
 #[derive(SimpleObject)]
 pub struct Users {
-    pub user_id: i64,
+    pub user_id: i32,
     pub email: String,
     pub password: String,
     pub role: String,
     pub created_at: Option<DateTimeWithTimeZone>,
-    pub email_verified: bool,
+    pub email_verified: Option<bool>,
+}
+
+impl From<UsersModel> for Users {
+    fn from(val: UsersModel) -> Users {
+        Users {
+            user_id: val.user_id,
+            email: val.email,
+            password: val.password,
+            role: val.role.to_value(),
+            created_at: val.created_at,
+            email_verified: val.email_verified,
+        }
+    }
 }
 
 #[derive(InputObject)]

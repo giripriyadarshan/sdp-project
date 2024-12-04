@@ -1,13 +1,17 @@
-use crate::auth::auth::{RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER};
-use crate::models::orders::{Orders, RegisterOrder};
-use crate::models::products::Categories;
-use crate::models::user::{LoginUser, RegisterCustomer};
-use crate::models::{products::Products, user::Customers};
-use async_graphql::http::GraphiQLSource;
-use async_graphql::{Context, EmptySubscription, Object, Schema};
-use axum::response;
-use axum::response::IntoResponse;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use crate::{
+    auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
+    entity::sea_orm_active_enums::UserRole,
+    models::{
+        orders::{Orders, RegisterOrder},
+        products::{Categories, Products},
+        user::{Customers, LoginUser, RegisterCustomer, RegisterUser, Users},
+    },
+};
+use async_graphql::{http::GraphiQLSource, Context, EmptySubscription, Object, Schema};
+use axum::response::{self, IntoResponse};
+use sea_orm::{
+    ActiveEnum, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
+};
 
 macro_rules! role_guard {
     ($($role:expr),*) => {
@@ -95,6 +99,51 @@ impl QueryRoot {
 
 #[Object]
 impl MutationRoot {
+    async fn register_user(
+        &self,
+        ctx: &Context<'_>,
+        input: RegisterUser,
+    ) -> Result<String, async_graphql::Error> {
+        use crate::entity::users;
+
+        if users::Entity::find()
+            .filter(users::Column::Email.eq(&input.email))
+            .one(ctx.data::<DatabaseConnection>()?)
+            .await?
+            .is_some()
+        {
+            return Err("User already exists".into());
+        }
+
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let role = match input.role.as_str() {
+            ROLE_CUSTOMER => UserRole::Customer,
+            ROLE_SUPPLIER => UserRole::Supplier,
+            _ => return Err("Invalid role".into()),
+        };
+
+        let password;
+        match Auth::check_password_strength(&input.password) {
+            Ok(_) => password = Auth::hash_password(&input.password)?,
+            Err(e) => return Err(e.into()),
+        }
+
+        let user = users::ActiveModel {
+            email: Set(input.email),
+            password: Set(password),
+            role: Set(role),
+            ..Default::default()
+        };
+        let insert_user = users::Entity::insert(user).exec_with_returning(db).await?;
+
+        Ok(Auth::create_token(
+            insert_user.user_id,
+            insert_user.role.to_value(),
+        )?)
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
     async fn register_customer(
         &self,
         ctx: &Context<'_>,
@@ -109,8 +158,28 @@ impl MutationRoot {
         ctx: &Context<'_>,
         login_details: LoginUser,
     ) -> Result<String, async_graphql::Error> {
-        // Implement login logic
-        unimplemented!()
+        use crate::entity::users;
+
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let user: Users = users::Entity::find()
+            .filter(users::Column::Email.eq(&login_details.email))
+            .one(db)
+            .await
+            .map_err(|_| "User not found")?
+            .map(|user| user.into())
+            .unwrap();
+
+        match Auth::verify_password(&login_details.password, &user.password) {
+            Ok(verification_status) => {
+                if verification_status {
+                    Ok(Auth::create_token(user.user_id, user.role)?)
+                } else {
+                    Err("Invalid password".into())
+                }
+            }
+            Err(_) => Err("Password not readable, please reset password".into()),
+        }
     }
 
     async fn create_order(
