@@ -4,7 +4,7 @@ use crate::{
     models::{
         orders::{Orders, RegisterOrder},
         products::{Categories, Products},
-        user::{Customers, LoginUser, RegisterCustomer, RegisterUser, Users},
+        user::{Customers, LoginUser, RegisterCustomer, RegisterUser, Suppliers, Users},
     },
 };
 use async_graphql::{http::GraphiQLSource, Context, EmptySubscription, Object, Schema};
@@ -90,10 +90,64 @@ impl QueryRoot {
         Ok(categories)
     }
 
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER, ROLE_SUPPLIER)")]
+    async fn get_user(
+        &self,
+        ctx: &Context<'_>,
+        token: String,
+    ) -> Result<Users, async_graphql::Error> {
+        use crate::entity::users;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let user = users::Entity::find()
+            .filter(users::Column::UserId.eq(Auth::verify_token(&token)?.user_id))
+            .one(db)
+            .await
+            .map_err(|_| "User not found")?
+            .map(|user| user.into())
+            .unwrap();
+
+        Ok(user)
+    }
+
     #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
-    async fn customer_profile(&self, ctx: &Context<'_>) -> Result<Customers, async_graphql::Error> {
-        // Implement customer profile query logic
-        unimplemented!()
+    async fn customer_profile(
+        &self,
+        ctx: &Context<'_>,
+        token: String,
+    ) -> Result<Customers, async_graphql::Error> {
+        use crate::entity::customers;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let customer = customers::Entity::find()
+            .filter(customers::Column::UserId.eq(Auth::verify_token(&token)?.user_id))
+            .one(db)
+            .await
+            .map_err(|_| "Customer not found")?
+            .map(|customer| customer.into())
+            .unwrap();
+
+        Ok(customer)
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_SUPPLIER)")]
+    async fn supplier_profile(
+        &self,
+        ctx: &Context<'_>,
+        token: String,
+    ) -> Result<Suppliers, async_graphql::Error> {
+        use crate::entity::suppliers;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let supplier = suppliers::Entity::find()
+            .filter(suppliers::Column::UserId.eq(Auth::verify_token(&token)?.user_id))
+            .one(db)
+            .await
+            .map_err(|_| "Supplier not found")?
+            .map(|supplier| supplier.into())
+            .unwrap();
+
+        Ok(supplier)
     }
 }
 

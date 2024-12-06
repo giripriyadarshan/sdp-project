@@ -1,4 +1,7 @@
-use crate::entity::users::Model as UsersModel;
+use crate::entity::{
+    customers::Model as CustomersModel, suppliers::Model as SuppliersModel,
+    users::Model as UsersModel,
+};
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::prelude::DateTimeWithTimeZone;
 use sea_orm::ActiveEnum;
@@ -48,6 +51,18 @@ pub struct Customers {
     pub user_id: i32,
 }
 
+impl From<CustomersModel> for Customers {
+    fn from(val: CustomersModel) -> Customers {
+        Customers {
+            customer_id: val.customer_id,
+            first_name: val.first_name,
+            last_name: val.last_name,
+            registration_date: val.registration_date,
+            user_id: val.user_id,
+        }
+    }
+}
+
 #[derive(InputObject)]
 pub struct RegisterCustomer {
     pub first_name: String,
@@ -60,6 +75,17 @@ pub struct Suppliers {
     pub name: String,
     pub contact_phone: Option<String>,
     pub user_id: i32,
+}
+
+impl From<SuppliersModel> for Suppliers {
+    fn from(val: SuppliersModel) -> Suppliers {
+        Suppliers {
+            supplier_id: val.supplier_id,
+            name: val.name,
+            contact_phone: val.contact_phone,
+            user_id: val.user_id,
+        }
+    }
 }
 
 #[derive(InputObject)]
