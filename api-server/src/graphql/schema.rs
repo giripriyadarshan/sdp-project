@@ -2,9 +2,11 @@ use crate::{
     auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     entity::sea_orm_active_enums::UserRole,
     models::{
-        orders::{Orders, RegisterOrder},
         products::{Categories, Products},
-        user::{Customers, LoginUser, RegisterCustomer, RegisterUser, Suppliers, Users},
+        user::{
+            Customers, LoginUser, RegisterCustomer, RegisterSupplier, RegisterUser, Suppliers,
+            Users,
+        },
     },
 };
 use async_graphql::{http::GraphiQLSource, Context, EmptySubscription, Object, Schema};
@@ -202,9 +204,48 @@ impl MutationRoot {
         &self,
         ctx: &Context<'_>,
         input: RegisterCustomer,
+        token: String,
     ) -> Result<Customers, async_graphql::Error> {
-        // Implement customer registration logic
-        unimplemented!()
+        use crate::entity::customers;
+
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let customer = customers::ActiveModel {
+            first_name: Set(input.first_name),
+            last_name: Set(input.last_name),
+            user_id: Set(Auth::verify_token(&token)?.user_id.parse::<i32>()?),
+            ..Default::default()
+        };
+
+        let insert_customer = customers::Entity::insert(customer)
+            .exec_with_returning(db)
+            .await?;
+
+        Ok(insert_customer.into())
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_SUPPLIER)")]
+    async fn register_supplier(
+        &self,
+        ctx: &Context<'_>,
+        input: RegisterSupplier,
+        token: String,
+    ) -> Result<Suppliers, async_graphql::Error> {
+        use crate::entity::suppliers;
+
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let supplier = suppliers::ActiveModel {
+            user_id: Set(Auth::verify_token(&token)?.user_id.parse::<i32>()?),
+            contact_phone: Set(input.contact_phone),
+            ..Default::default()
+        };
+
+        let insert_supplier = suppliers::Entity::insert(supplier)
+            .exec_with_returning(db)
+            .await?;
+
+        Ok(insert_supplier.into())
     }
 
     async fn login(
@@ -234,15 +275,6 @@ impl MutationRoot {
             }
             Err(_) => Err("Password not readable, please reset password".into()),
         }
-    }
-
-    async fn create_order(
-        &self,
-        ctx: &Context<'_>,
-        input: RegisterOrder,
-    ) -> Result<Orders, async_graphql::Error> {
-        // Implement order creation logic
-        unimplemented!()
     }
 }
 
