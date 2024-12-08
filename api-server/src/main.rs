@@ -6,8 +6,7 @@ mod models;
 
 use crate::graphql::schema::graphiql;
 use async_graphql_axum::GraphQL;
-use axum::routing::get;
-use axum::Router;
+use axum::{routing::get, Router};
 use dotenv::dotenv;
 use redis::Client as RedisClient;
 use sea_orm::Database;
