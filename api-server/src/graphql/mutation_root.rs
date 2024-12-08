@@ -1,11 +1,14 @@
 use crate::{
-    auth::auth::{RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
+    auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
     models::user::{
-        Customers, LoginUser, RegisterCustomer, RegisterSupplier, RegisterUser, Suppliers,
+        Customers, LoginUser, RegisterCustomer, RegisterSupplier, RegisterUser, Suppliers, Users,
     },
 };
 use async_graphql::{Context, Object};
+use sea_orm::{
+    ActiveEnum, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
+};
 
 pub struct MutationRoot;
 
@@ -16,11 +19,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterUser,
     ) -> Result<String, async_graphql::Error> {
-        use crate::auth::auth::{Auth, ROLE_CUSTOMER, ROLE_SUPPLIER};
-        use crate::entity::sea_orm_active_enums::UserRole;
-        use crate::entity::users;
-        use sea_orm::ActiveValue::Set;
-        use sea_orm::{ActiveEnum, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+        use crate::entity::{sea_orm_active_enums::UserRole, users};
 
         if users::Entity::find()
             .filter(users::Column::Email.eq(&input.email))
@@ -65,10 +64,7 @@ impl MutationRoot {
         input: RegisterCustomer,
         token: String,
     ) -> Result<Customers, async_graphql::Error> {
-        use crate::auth::auth::Auth;
         use crate::entity::customers;
-        use sea_orm::ActiveValue::Set;
-        use sea_orm::{DatabaseConnection, EntityTrait};
 
         let db = ctx.data::<DatabaseConnection>()?;
 
@@ -93,10 +89,7 @@ impl MutationRoot {
         input: RegisterSupplier,
         token: String,
     ) -> Result<Suppliers, async_graphql::Error> {
-        use crate::auth::auth::Auth;
         use crate::entity::suppliers;
-        use sea_orm::ActiveValue::Set;
-        use sea_orm::{DatabaseConnection, EntityTrait};
 
         let db = ctx.data::<DatabaseConnection>()?;
 
@@ -118,10 +111,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         login_details: LoginUser,
     ) -> Result<String, async_graphql::Error> {
-        use crate::auth::auth::Auth;
         use crate::entity::users;
-        use crate::models::user::Users;
-        use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 
         let db = ctx.data::<DatabaseConnection>()?;
 

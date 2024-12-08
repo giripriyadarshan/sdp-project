@@ -1,15 +1,13 @@
-use crate::models::products::Reviews;
 use crate::{
-    auth::auth::{RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
+    auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
     models::{
-        products::{Categories, Products},
+        products::{Categories, Products, Reviews},
         user::{Customers, Suppliers, Users},
     },
 };
 use async_graphql::{Context, Object};
-use sea_orm::ColumnTrait;
-use sea_orm::QueryFilter;
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 
 pub struct QueryRoot;
 
@@ -23,7 +21,6 @@ impl QueryRoot {
         base_product_id: Option<i32>,
     ) -> Result<Vec<Products>, async_graphql::Error> {
         use crate::entity::products;
-        use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
         let db = ctx.data::<DatabaseConnection>()?;
 
         let products = products::Entity::find()
@@ -52,7 +49,6 @@ impl QueryRoot {
         name: String,
     ) -> Result<Vec<Products>, async_graphql::Error> {
         use crate::entity::products;
-        use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
         let db = ctx.data::<DatabaseConnection>()?;
 
         let products = products::Entity::find()
@@ -67,7 +63,6 @@ impl QueryRoot {
 
     async fn categories(&self, ctx: &Context<'_>) -> Result<Vec<Categories>, async_graphql::Error> {
         use crate::entity::categories;
-        use sea_orm::{DatabaseConnection, EntityTrait};
         let db = ctx.data::<DatabaseConnection>()?;
 
         let categories = categories::Entity::find().all(db).await?;
@@ -90,18 +85,16 @@ impl QueryRoot {
         ctx: &Context<'_>,
         token: String,
     ) -> Result<Users, async_graphql::Error> {
-        use crate::auth::auth::Auth;
         use crate::entity::users;
-        use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
         let db = ctx.data::<DatabaseConnection>()?;
 
-        let user = users::Entity::find()
-            .filter(users::Column::UserId.eq(Auth::verify_token(&token)?.user_id))
-            .one(db)
-            .await
-            .map_err(|_| "User not found")?
-            .map(|user| user.into())
-            .unwrap();
+        let user =
+            users::Entity::find_by_id(Auth::verify_token(&token)?.user_id.parse::<i32>().unwrap())
+                .one(db)
+                .await
+                .map_err(|_| "User not found")?
+                .map(|user| user.into())
+                .unwrap();
 
         Ok(user)
     }
@@ -112,9 +105,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         token: String,
     ) -> Result<Customers, async_graphql::Error> {
-        use crate::auth::auth::Auth;
         use crate::entity::customers;
-        use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
         let db = ctx.data::<DatabaseConnection>()?;
 
         let customer = customers::Entity::find()
@@ -134,9 +125,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         token: String,
     ) -> Result<Suppliers, async_graphql::Error> {
-        use crate::auth::auth::Auth;
         use crate::entity::suppliers;
-        use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
         let db = ctx.data::<DatabaseConnection>()?;
 
         let supplier = suppliers::Entity::find()
@@ -156,7 +145,6 @@ impl QueryRoot {
         product_id: i32,
     ) -> Result<Vec<Reviews>, async_graphql::Error> {
         use crate::entity::reviews;
-        use sea_orm::{DatabaseConnection, EntityTrait};
         let db = ctx.data::<DatabaseConnection>()?;
 
         let reviews = reviews::Entity::find()
