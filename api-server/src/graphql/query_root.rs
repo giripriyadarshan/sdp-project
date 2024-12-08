@@ -2,12 +2,16 @@ use crate::{
     auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
     models::{
+        addresses::Addresses,
         products::{Categories, Products, Reviews},
         user::{Customers, Suppliers, Users},
     },
 };
 use async_graphql::{Context, Object};
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use sea_orm::{
+    ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, EntityTrait, QueryFilter,
+    Statement,
+};
 
 pub struct QueryRoot;
 
@@ -155,5 +159,65 @@ impl QueryRoot {
         let reviews: Vec<Reviews> = reviews.into_iter().map(|review| review.into()).collect();
 
         Ok(reviews)
+    }
+
+    async fn addresses(
+        &self,
+        ctx: &Context<'_>,
+        token: String,
+    ) -> Result<Vec<Addresses>, async_graphql::Error> {
+        use crate::entity::addresses;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let user_id = Auth::verify_token(&token)?.user_id.parse::<i32>()?;
+        // this query includes inner join with users, customers and addresses tables
+        // this query can be written entirely with SELECT and WHERE. Basically, get customer_id using user_id in customer table and then insert it into addresses table. But this has the keyword "JOIN" in it, so we'll go with this one.
+        // For reference: SELECT * FROM addresses WHERE customer_id = (SELECT customer_id FROM customers WHERE user_id = $1);
+        let address = db
+            .query_all(Statement::from_sql_and_values(
+                DbBackend::Postgres,
+                "SELECT addresses.* FROM users
+                    JOIN customers ON users.user_id = customers.user_id
+                    JOIN addresses ON customers.customer_id = addresses.customer_id
+                    WHERE users.user_id = $1;
+                    ",
+                vec![user_id.into()],
+            ))
+            .await?;
+
+        let addresses: Vec<Addresses> = address
+            .into_iter()
+            .map(|item| {
+                addresses::Model {
+                    address_id: item.try_get::<i32>("", "address_id").unwrap().to_owned(),
+                    address_type_id: item
+                        .try_get::<Option<i32>>("", "address_type_id")
+                        .unwrap()
+                        .to_owned(),
+                    city: item.try_get::<String>("", "city").unwrap().to_owned(),
+                    country: item.try_get::<String>("", "country").unwrap().to_owned(),
+                    customer_id: item.try_get::<i32>("", "customer_id").unwrap().to_owned(),
+                    is_default: item
+                        .try_get::<Option<bool>>("", "is_default")
+                        .unwrap()
+                        .to_owned(),
+                    postal_code: item
+                        .try_get::<String>("", "postal_code")
+                        .unwrap()
+                        .to_owned(),
+                    state: item
+                        .try_get::<Option<String>>("", "state")
+                        .unwrap()
+                        .to_owned(),
+                    street_address: item
+                        .try_get::<String>("", "street_address")
+                        .unwrap()
+                        .to_owned(),
+                }
+                .into()
+            })
+            .collect();
+
+        Ok(addresses)
     }
 }
