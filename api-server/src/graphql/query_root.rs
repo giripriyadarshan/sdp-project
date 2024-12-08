@@ -1,3 +1,4 @@
+use crate::models::products::Reviews;
 use crate::{
     auth::auth::{RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
@@ -7,6 +8,8 @@ use crate::{
     },
 };
 use async_graphql::{Context, Object};
+use sea_orm::ColumnTrait;
+use sea_orm::QueryFilter;
 
 pub struct QueryRoot;
 
@@ -145,5 +148,24 @@ impl QueryRoot {
             .unwrap();
 
         Ok(supplier)
+    }
+
+    async fn reviews_for_product(
+        &self,
+        ctx: &Context<'_>,
+        product_id: i32,
+    ) -> Result<Vec<Reviews>, async_graphql::Error> {
+        use crate::entity::reviews;
+        use sea_orm::{DatabaseConnection, EntityTrait};
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let reviews = reviews::Entity::find()
+            .filter(reviews::Column::ProductId.eq(product_id))
+            .all(db)
+            .await?;
+
+        let reviews: Vec<Reviews> = reviews.into_iter().map(|review| review.into()).collect();
+
+        Ok(reviews)
     }
 }

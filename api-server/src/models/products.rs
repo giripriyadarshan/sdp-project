@@ -1,4 +1,4 @@
-use crate::entity::products::Model as ProductsModel;
+use crate::entity::{products::Model as ProductsModel, reviews::Model as ReviewsModel};
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::prelude::DateTimeWithTimeZone;
 use std::string::ToString;
@@ -97,6 +97,20 @@ pub struct Reviews {
     pub review_text: Option<String>,
     pub review_date: Option<DateTimeWithTimeZone>,
     pub media_paths: Option<Vec<String>>,
+}
+
+impl From<ReviewsModel> for Reviews {
+    fn from(val: ReviewsModel) -> Reviews {
+        Reviews {
+            review_id: val.review_id,
+            customer_id: val.customer_id,
+            product_id: val.product_id,
+            rating: val.rating,
+            review_text: val.review_text,
+            review_date: val.review_date,
+            media_paths: val.media_paths,
+        }
+    }
 }
 
 #[derive(InputObject)]
