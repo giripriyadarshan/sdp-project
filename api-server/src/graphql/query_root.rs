@@ -3,6 +3,7 @@ use crate::{
     graphql::macros::role_guard,
     models::{
         addresses::Addresses,
+        payments::PaymentMethods,
         products::{Categories, Products, Reviews},
         user::{Customers, Suppliers, Users},
     },
@@ -219,5 +220,28 @@ impl QueryRoot {
             .collect();
 
         Ok(addresses)
+    }
+
+    async fn payment_methods(
+        &self,
+        ctx: &Context<'_>,
+        token: String,
+    ) -> Result<Vec<PaymentMethods>, async_graphql::Error> {
+        use crate::entity::{customers, payment_methods};
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let user_id = Auth::verify_token(&token)?.user_id.parse::<i32>()?;
+        let payment_method = payment_methods::Entity::find()
+            .inner_join(customers::Entity)
+            .filter(customers::Column::UserId.eq(user_id))
+            .all(db)
+            .await?;
+
+        let payment_methods: Vec<PaymentMethods> = payment_method
+            .into_iter()
+            .map(|payment_methods| payment_methods.into())
+            .collect();
+
+        Ok(payment_methods)
     }
 }
