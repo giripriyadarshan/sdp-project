@@ -3,7 +3,7 @@ use crate::{
     graphql::macros::role_guard,
     models::{
         addresses::Addresses,
-        payments::{PaymentMethods, CardTypes},
+        payments::{CardTypes, PaymentMethods},
         products::{Categories, Products, Reviews},
         user::{Customers, Suppliers, Users},
     },
@@ -74,11 +74,7 @@ impl QueryRoot {
 
         let categories: Vec<Categories> = categories
             .into_iter()
-            .map(|category| Categories {
-                category_id: category.category_id,
-                name: category.name,
-                parent_category_id: category.parent_category_id,
-            })
+            .map(|category| category.into())
             .collect();
 
         Ok(categories)
@@ -244,7 +240,7 @@ impl QueryRoot {
 
         Ok(payment_methods)
     }
-    
+
     async fn card_type(
         &self,
         ctx: &Context<'_>,
@@ -252,9 +248,9 @@ impl QueryRoot {
     ) -> Result<CardTypes, async_graphql::Error> {
         use crate::entity::card_types;
         let db = ctx.data::<DatabaseConnection>()?;
-        
+
         let card_type = card_types::Entity::find_by_id(card_type_id).one(db).await?;
-        
+
         Ok(card_type.unwrap().into())
     }
 }
