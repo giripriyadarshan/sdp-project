@@ -3,7 +3,7 @@ use crate::{
     graphql::macros::role_guard,
     models::{
         addresses::Addresses,
-        payments::PaymentMethods,
+        payments::{PaymentMethods, CardTypes},
         products::{Categories, Products, Reviews},
         user::{Customers, Suppliers, Users},
     },
@@ -243,5 +243,18 @@ impl QueryRoot {
             .collect();
 
         Ok(payment_methods)
+    }
+    
+    async fn card_type(
+        &self,
+        ctx: &Context<'_>,
+        card_type_id: i32,
+    ) -> Result<CardTypes, async_graphql::Error> {
+        use crate::entity::card_types;
+        let db = ctx.data::<DatabaseConnection>()?;
+        
+        let card_type = card_types::Entity::find_by_id(card_type_id).one(db).await?;
+        
+        Ok(card_type.unwrap().into())
     }
 }
