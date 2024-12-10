@@ -1,9 +1,12 @@
+use crate::auth::auth::Auth;
 use crate::entity::{
     categories::Model as CategoriesModel, products::Model as ProductsModel,
     reviews::Model as ReviewsModel,
 };
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::prelude::DateTimeWithTimeZone;
+use sea_orm::sea_query::error::Error;
+use sea_orm::ActiveValue::Set;
 use std::string::ToString;
 
 #[derive(SimpleObject)]
@@ -45,6 +48,26 @@ pub struct RegisterProduct {
     pub stock_quantity: i32,
     pub media_paths: Option<Vec<String>>,
     pub base_product_id: Option<i32>,
+}
+
+pub fn create_product_model(
+    input: RegisterProduct,
+    token: String,
+) -> Result<crate::entity::products::ActiveModel, Error> {
+    use crate::entity::products;
+    Ok(products::ActiveModel {
+        name: Set(input.name.clone()),
+        description: Set(input.description.clone()),
+        base_price: Set(input.base_price.parse::<i64>().unwrap().into()),
+        supplier_id: Set(Some(
+            Auth::verify_token(&token)
+                .unwrap()
+                .user_id
+                .parse::<i32>()
+                .unwrap(),
+        )),
+        ..Default::default()
+    })
 }
 
 #[derive(SimpleObject)]

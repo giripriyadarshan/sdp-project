@@ -1,4 +1,4 @@
-use crate::models::products::{Products, RegisterProduct};
+use crate::models::products::{create_product_model, Products, RegisterProduct};
 use crate::{
     auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
@@ -146,16 +146,28 @@ impl MutationRoot {
     ) -> Result<Products, async_graphql::Error> {
         use crate::entity::products;
         let db = ctx.data::<DatabaseConnection>()?;
-        let product = products::ActiveModel {
-            name: Set(input.name),
-            description: Set(input.description),
-            base_price: Set(From::from(input.base_price.parse::<i64>()?)),
-            supplier_id: Set(Some(Auth::verify_token(&token)?.user_id.parse::<i32>()?)),
-            ..Default::default()
-        };
+        let product = create_product_model(input, token)?;
         let insert_product = products::Entity::insert(product)
             .exec_with_returning(db)
             .await?;
         Ok(insert_product.into())
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_SUPPLIER)")]
+    async fn update_product(
+        &self,
+        ctx: &Context<'_>,
+        product_id: i32,
+        input: RegisterProduct,
+        token: String,
+    ) -> Result<Products, async_graphql::Error> {
+        use crate::entity::products;
+        let db = ctx.data::<DatabaseConnection>()?;
+        let product = create_product_model(input, token)?;
+        let update_product = products::Entity::update(product)
+            .filter(products::Column::ProductId.eq(product_id))
+            .exec(db)
+            .await?;
+        Ok(update_product.into())
     }
 }
