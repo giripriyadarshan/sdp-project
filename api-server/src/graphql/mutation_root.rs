@@ -1,3 +1,4 @@
+use crate::models::products::{Products, RegisterProduct};
 use crate::{
     auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
@@ -133,5 +134,28 @@ impl MutationRoot {
             }
             Err(_) => Err("Password not readable, please reset password".into()),
         }
+    }
+
+    // needs a role_guard to check if the user is a supplier as even a customer has a valid token
+    #[graphql(guard = "role_guard!(ROLE_SUPPLIER)")]
+    async fn register_product(
+        &self,
+        ctx: &Context<'_>,
+        input: RegisterProduct,
+        token: String,
+    ) -> Result<Products, async_graphql::Error> {
+        use crate::entity::products;
+        let db = ctx.data::<DatabaseConnection>()?;
+        let product = products::ActiveModel {
+            name: Set(input.name),
+            description: Set(input.description),
+            base_price: Set(From::from(input.base_price.parse::<i64>()?)),
+            supplier_id: Set(Some(Auth::verify_token(&token)?.user_id.parse::<i32>()?)),
+            ..Default::default()
+        };
+        let insert_product = products::Entity::insert(product)
+            .exec_with_returning(db)
+            .await?;
+        Ok(insert_product.into())
     }
 }
