@@ -1,7 +1,6 @@
-use crate::auth::auth::Auth;
 use crate::graphql::{mutation_root::MutationRoot, query_root::QueryRoot};
 use async_graphql::{http::GraphiQLSource, EmptySubscription, Schema};
-use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
+use async_graphql_axum::GraphQLRequest;
 use axum::http::HeaderMap;
 use axum::response::{self, IntoResponse};
 use axum::{Extension, Json};

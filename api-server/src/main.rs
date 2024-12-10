@@ -4,13 +4,11 @@ mod error;
 mod graphql;
 mod models;
 
-use crate::graphql::schema::{graphiql, graphql_handler, AppSchema};
-use async_graphql_axum::{GraphQL, GraphQLRequest};
-use axum::http::HeaderMap;
+use crate::graphql::schema::{graphiql, graphql_handler};
 use axum::{routing::get, Extension, Router};
 use dotenv::dotenv;
 use redis::Client as RedisClient;
-use sea_orm::{Database, DatabaseConnection, Schema};
+use sea_orm::Database;
 use std::env;
 use tokio::net::TcpListener;
 
