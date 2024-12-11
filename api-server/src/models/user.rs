@@ -1,10 +1,15 @@
-use crate::entity::{
-    customers::Model as CustomersModel, suppliers::Model as SuppliersModel,
-    users::Model as UsersModel,
+use crate::{
+    auth::auth::Auth,
+    entity::{
+        customers::Model as CustomersModel, suppliers::Model as SuppliersModel,
+        users::Model as UsersModel,
+    },
 };
-use async_graphql::{InputObject, SimpleObject};
-use sea_orm::prelude::DateTimeWithTimeZone;
-use sea_orm::ActiveEnum;
+use async_graphql::{Error, InputObject, SimpleObject};
+use sea_orm::QueryFilter;
+use sea_orm::{
+    prelude::DateTimeWithTimeZone, ActiveEnum, ColumnTrait, DatabaseConnection, EntityTrait,
+};
 
 #[derive(SimpleObject)]
 pub struct Users {
@@ -92,4 +97,16 @@ impl From<SuppliersModel> for Suppliers {
 pub struct RegisterSupplier {
     pub name: String,
     pub contact_phone: Option<String>,
+}
+
+pub async fn get_customer_id(db: &DatabaseConnection, token: &str) -> Result<i32, Error> {
+    use crate::entity::customers;
+
+    let user_id = Auth::verify_token(token)?.user_id.parse::<i32>()?;
+    customers::Entity::find()
+        .filter(customers::Column::UserId.eq(user_id))
+        .one(db)
+        .await?
+        .map(|customer| customer.customer_id)
+        .ok_or_else(|| Error::new("Customer not found"))
 }

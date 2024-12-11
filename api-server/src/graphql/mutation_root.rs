@@ -1,17 +1,20 @@
-use crate::models::orders::{Orders, RegisterOrder};
-use crate::models::products::{create_product_model, Products, RegisterProduct};
 use crate::{
     auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
-    models::user::{
-        Customers, LoginUser, RegisterCustomer, RegisterSupplier, RegisterUser, Suppliers, Users,
+    models::{
+        orders::{Orders, RegisterOrder},
+        payments::{PaymentMethods, RegisterPaymentMethod},
+        products::{create_product_model, Products, RegisterProduct},
+        user::{
+            get_customer_id, Customers, LoginUser, RegisterCustomer, RegisterSupplier,
+            RegisterUser, Suppliers, Users,
+        },
     },
 };
 use async_graphql::{Context, Object};
-use sea_orm::prelude::Decimal;
 use sea_orm::{
-    ActiveEnum, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
-    TransactionTrait,
+    prelude::Decimal, ActiveEnum, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
+    QueryFilter, TransactionTrait,
 };
 
 pub struct MutationRoot;
@@ -185,7 +188,7 @@ impl MutationRoot {
         let db = ctx.data::<DatabaseConnection>()?;
         let txn = db.begin().await?;
 
-        let customer_id = Auth::verify_token(&token)?.user_id.parse::<i32>()?;
+        let customer_id = get_customer_id(&db, &token).await?;
 
         let discount_id = match &input.discount_code {
             Some(discount_code) => {
@@ -255,5 +258,97 @@ impl MutationRoot {
         txn.commit().await?;
 
         Ok(insert_order.into())
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
+    async fn register_payment_method(
+        &self,
+        ctx: &Context<'_>,
+        input: RegisterPaymentMethod,
+        token: String,
+    ) -> Result<PaymentMethods, async_graphql::Error> {
+        use crate::entity::{card_types, payment_methods, sea_orm_active_enums::PaymentMethodType};
+        let db = ctx.data::<DatabaseConnection>()?;
+        let txn = db.begin().await?;
+
+        let customer_id = get_customer_id(&db, &token).await?;
+        let is_default: Option<bool> = Some(input.is_default.unwrap_or(false));
+
+        let payment_method = match input.payment_type.as_str() {
+            "card" => {
+                let card_type_id = card_types::Entity::insert(card_types::ActiveModel {
+                    name: Set(input
+                        .card_type_name
+                        .unwrap_or_else(|| "Unknown".to_string())),
+                    ..Default::default()
+                })
+                .exec(&txn)
+                .await?
+                .last_insert_id;
+
+                payment_methods::ActiveModel {
+                    customer_id: Set(customer_id),
+                    payment_type: Set(PaymentMethodType::Card),
+                    is_default: Set(is_default),
+                    card_number: Set(Some(
+                        input
+                            .card_number
+                            .map_or(Err("Card number is required"), Ok)?,
+                    )),
+                    card_expiration_date: Set(Some(
+                        input
+                            .card_expiration_date
+                            .map_or(Err("Card expiration date is required"), Ok)?,
+                    )),
+                    card_type_id: Set(Some(card_type_id)),
+                    ..Default::default()
+                }
+            }
+            "upi" => payment_methods::ActiveModel {
+                customer_id: Set(customer_id),
+                payment_type: Set(PaymentMethodType::Upi),
+                is_default: Set(is_default),
+                upi_id: Set(Some(input.upi_id.map_or(Err("UPI ID is required"), Ok)?)),
+                ..Default::default()
+            },
+            "iban" => payment_methods::ActiveModel {
+                customer_id: Set(customer_id),
+                payment_type: Set(PaymentMethodType::Iban),
+                is_default: Set(is_default),
+                iban: Set(Some(input.iban.map_or(Err("IBAN number is required"), Ok)?)),
+                ..Default::default()
+            },
+            "netbanking" => payment_methods::ActiveModel {
+                customer_id: Set(customer_id),
+                payment_type: Set(PaymentMethodType::Netbanking),
+                is_default: Set(is_default),
+                bank_name: Set(Some(
+                    input.bank_name.map_or(Err("Bank name is required"), Ok)?,
+                )),
+                account_holder_name: Set(Some(
+                    input
+                        .account_holder_name
+                        .map_or(Err("Account holder name is required"), Ok)?,
+                )),
+                bank_account_number: Set(Some(
+                    input
+                        .bank_account_number
+                        .map_or(Err("Bank account number is required"), Ok)?,
+                )),
+                ifsc_code: Set(Some(
+                    input.ifsc_code.map_or(Err("IFSC code is required"), Ok)?,
+                )),
+                ..Default::default()
+            },
+            _ => return Err("Invalid payment type".into()),
+        };
+
+        let insert_payment_method = payment_methods::Entity::insert(payment_method)
+            .exec_with_returning(&txn)
+            .await?;
+
+        txn.commit().await?;
+
+        Ok(insert_payment_method.into())
     }
 }

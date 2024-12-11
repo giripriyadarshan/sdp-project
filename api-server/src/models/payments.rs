@@ -1,4 +1,6 @@
-use crate::entity::{payment_methods::Model as PaymentMethodsModel, card_types::Model as CardTypesModel};
+use crate::entity::{
+    card_types::Model as CardTypesModel, payment_methods::Model as PaymentMethodsModel,
+};
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::{prelude::Date, ActiveEnum};
 
@@ -41,7 +43,6 @@ impl From<PaymentMethodsModel> for PaymentMethods {
 
 #[derive(InputObject)]
 pub struct RegisterPaymentMethod {
-    pub customer_id: i32,
     pub payment_type: String,
     pub is_default: Option<bool>,
     pub bank_name: Option<String>,
@@ -52,7 +53,7 @@ pub struct RegisterPaymentMethod {
     pub upi_id: Option<String>,
     pub bank_account_number: Option<String>,
     pub ifsc_code: Option<String>,
-    pub card_type_id: Option<i32>,
+    pub card_type_name: Option<String>,
 }
 
 #[derive(SimpleObject)]
@@ -65,12 +66,7 @@ impl From<CardTypesModel> for CardTypes {
     fn from(cardtypes: CardTypesModel) -> Self {
         Self {
             card_type_id: cardtypes.card_type_id,
-            name: cardtypes.name
+            name: cardtypes.name,
         }
     }
-}
-
-#[derive(InputObject)]
-pub struct RegisterCardType {
-    pub name: String,
 }
