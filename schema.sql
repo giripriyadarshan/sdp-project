@@ -102,13 +102,15 @@ create table payment_methods
     ifsc_code            varchar(11),
     card_type_id         integer
         constraint fk_card_type
-            references card_types,
-    constraint unique_default_payment_method
-        unique (customer_id, is_default)
+            references card_types
 );
 
 create index idx_payment_methods_customer_default
     on payment_methods (customer_id, is_default);
+
+create unique index idx_unique_default_payment_method
+    on payment_methods (customer_id)
+    where (is_default = true);
 
 create table suppliers
 (

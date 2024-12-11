@@ -20,7 +20,7 @@ pub enum Relation {
     Addresses,
     #[sea_orm(has_many = "super::orders::Entity")]
     Orders,
-    #[sea_orm(has_many = "super::payment_methods::Entity")]
+    #[sea_orm(has_one = "super::payment_methods::Entity")]
     PaymentMethods,
     #[sea_orm(has_many = "super::reviews::Entity")]
     Reviews,

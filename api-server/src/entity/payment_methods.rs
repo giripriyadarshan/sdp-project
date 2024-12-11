@@ -8,6 +8,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub payment_method_id: i32,
+    #[sea_orm(unique)]
     pub customer_id: i32,
     pub payment_type: PaymentMethodType,
     pub is_default: Option<bool>,
