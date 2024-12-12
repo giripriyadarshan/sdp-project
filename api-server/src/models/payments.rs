@@ -1,8 +1,9 @@
 use crate::entity::{
-    card_types::Model as CardTypesModel, payment_methods::Model as PaymentMethodsModel,
+    card_types, card_types::Model as CardTypesModel, payment_methods,
+    payment_methods::Model as PaymentMethodsModel, sea_orm_active_enums::PaymentMethodType,
 };
 use async_graphql::{InputObject, SimpleObject};
-use sea_orm::{prelude::Date, ActiveEnum};
+use sea_orm::{prelude::Date, ActiveEnum, ActiveValue::Set, DatabaseTransaction, EntityTrait};
 
 #[derive(SimpleObject)]
 pub struct PaymentMethods {
@@ -54,6 +55,83 @@ pub struct RegisterPaymentMethod {
     pub bank_account_number: Option<String>,
     pub ifsc_code: Option<String>,
     pub card_type_name: Option<String>,
+}
+pub async fn create_payment_method(
+    customer_id: i32,
+    is_default: Option<bool>,
+    input: RegisterPaymentMethod,
+    txn: &DatabaseTransaction,
+) -> Result<payment_methods::ActiveModel, async_graphql::Error> {
+    match input.payment_type.as_str() {
+        "card" => {
+            let card_type_id = Some(
+                card_types::Entity::insert(card_types::ActiveModel {
+                    name: Set(input
+                        .card_type_name
+                        .clone()
+                        .unwrap_or_else(|| "Unknown".to_string())),
+                    ..Default::default()
+                })
+                .exec(txn)
+                .await?
+                .last_insert_id,
+            );
+            Ok(payment_methods::ActiveModel {
+                customer_id: Set(customer_id),
+                payment_type: Set(PaymentMethodType::Card),
+                is_default: Set(is_default),
+                card_number: Set(Some(
+                    input.card_number.clone().ok_or("Card number is required")?,
+                )),
+                card_expiration_date: Set(Some(
+                    input
+                        .card_expiration_date
+                        .ok_or("Card expiration date is required")?,
+                )),
+                card_type_id: Set(card_type_id),
+                ..Default::default()
+            })
+        }
+        "upi" => Ok(payment_methods::ActiveModel {
+            customer_id: Set(customer_id),
+            payment_type: Set(PaymentMethodType::Upi),
+            is_default: Set(is_default),
+            upi_id: Set(Some(input.upi_id.clone().ok_or("UPI ID is required")?)),
+            ..Default::default()
+        }),
+        "iban" => Ok(payment_methods::ActiveModel {
+            customer_id: Set(customer_id),
+            payment_type: Set(PaymentMethodType::Iban),
+            is_default: Set(is_default),
+            iban: Set(Some(input.iban.clone().ok_or("IBAN number is required")?)),
+            ..Default::default()
+        }),
+        "netbanking" => Ok(payment_methods::ActiveModel {
+            customer_id: Set(customer_id),
+            payment_type: Set(PaymentMethodType::Netbanking),
+            is_default: Set(is_default),
+            bank_name: Set(Some(
+                input.bank_name.clone().ok_or("Bank name is required")?,
+            )),
+            account_holder_name: Set(Some(
+                input
+                    .account_holder_name
+                    .clone()
+                    .ok_or("Account holder name is required")?,
+            )),
+            bank_account_number: Set(Some(
+                input
+                    .bank_account_number
+                    .clone()
+                    .ok_or("Bank account number is required")?,
+            )),
+            ifsc_code: Set(Some(
+                input.ifsc_code.clone().ok_or("IFSC code is required")?,
+            )),
+            ..Default::default()
+        }),
+        _ => Err("Invalid payment type".into()),
+    }
 }
 
 #[derive(SimpleObject)]
