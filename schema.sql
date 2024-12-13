@@ -145,7 +145,8 @@ create table products
         constraint fk_base_product
             references products
             on delete set null,
-    media_paths     text[]
+    media_paths     text[],
+    created_at      timestamp with time zone
 );
 
 create index idx_product_category
@@ -321,5 +322,4 @@ create index idx_discounts_category
 
 create index idx_discounts_validity
     on discounts (valid_from, valid_until);
-
 
