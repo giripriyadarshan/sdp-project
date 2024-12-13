@@ -17,6 +17,7 @@ pub struct Model {
     pub stock_quantity: i32,
     pub base_product_id: Option<i32>,
     pub media_paths: Option<Vec<String>>,
+    pub created_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

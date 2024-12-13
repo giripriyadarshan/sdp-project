@@ -1,11 +1,13 @@
 use crate::entity::{
-    categories::Model as CategoriesModel, discounts::Model as DiscountsModel,
-    products::Model as ProductsModel, reviews::Model as ReviewsModel,
+    categories::Model as CategoriesModel, discounts::Model as DiscountsModel, products,
+    products::Entity as ProductsEntity, products::Model as ProductsModel,
+    reviews::Model as ReviewsModel,
 };
+use crate::models::order_und_pagination::{OrderAndPagination, OrderByColumn, OrderByOrder};
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::{
     prelude::DateTimeWithTimeZone, sea_query::error::Error, ActiveValue::Set, ColumnTrait,
-    DatabaseConnection, DatabaseTransaction, EntityTrait, QueryFilter,
+    DatabaseConnection, DatabaseTransaction, EntityTrait, QueryFilter, QueryOrder, Select,
 };
 use std::string::ToString;
 
@@ -51,6 +53,29 @@ pub async fn check_product_exists(
         return Err("Product not found".into());
     }
     Ok(())
+}
+
+pub async fn paginate_products(
+    paginator: OrderAndPagination,
+    entity: Select<ProductsEntity>,
+) -> Result<Select<ProductsEntity>, async_graphql::Error> {
+    let order_by = paginator.order_by.column;
+    let order = paginator.order_by.order;
+
+    match (order, order_by) {
+        (OrderByOrder::Asc, OrderByColumn::Date) => {
+            Ok(entity.order_by_asc(products::Column::CreatedAt))
+        }
+        (OrderByOrder::Desc, OrderByColumn::Date) => {
+            Ok(entity.order_by_desc(products::Column::CreatedAt))
+        }
+        (OrderByOrder::Asc, OrderByColumn::Amount) => {
+            Ok(entity.order_by_asc(products::Column::BasePrice))
+        }
+        (OrderByOrder::Desc, OrderByColumn::Amount) => {
+            Ok(entity.order_by_desc(products::Column::BasePrice))
+        }
+    }
 }
 
 #[derive(InputObject)]
