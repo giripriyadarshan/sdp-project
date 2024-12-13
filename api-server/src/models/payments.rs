@@ -3,7 +3,9 @@ use crate::entity::{
     payment_methods::Model as PaymentMethodsModel, sea_orm_active_enums::PaymentMethodType,
 };
 use async_graphql::{InputObject, SimpleObject};
+use sea_orm::QueryFilter;
 use sea_orm::{prelude::Date, ActiveEnum, ActiveValue::Set, DatabaseTransaction, EntityTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait};
 
 #[derive(SimpleObject)]
 pub struct PaymentMethods {
@@ -62,6 +64,22 @@ pub async fn create_payment_method(
     input: RegisterPaymentMethod,
     txn: &DatabaseTransaction,
 ) -> Result<payment_methods::ActiveModel, async_graphql::Error> {
+    // check if any default payment method exists and update it to not default
+    if is_default.unwrap_or(false) {
+        let default_payment_method = payment_methods::Entity::find()
+            .filter(payment_methods::Column::CustomerId.eq(customer_id))
+            .filter(payment_methods::Column::IsDefault.eq(true))
+            .one(txn)
+            .await?;
+        if default_payment_method.is_some() {
+            // update the existing default payment method to not default
+            let mut default_payment_method: payment_methods::ActiveModel =
+                default_payment_method.unwrap().into();
+            default_payment_method.is_default = Set(Some(false));
+            default_payment_method.update(txn).await?;
+        }
+    }
+
     match input.payment_type.as_str() {
         "card" => {
             let card_type_id = Some(

@@ -6,9 +6,9 @@ use crate::{
     },
 };
 use async_graphql::{Error, InputObject, SimpleObject};
-use sea_orm::QueryFilter;
 use sea_orm::{
     prelude::DateTimeWithTimeZone, ActiveEnum, ColumnTrait, DatabaseConnection, EntityTrait,
+    QueryFilter,
 };
 
 #[derive(SimpleObject)]
@@ -99,14 +99,33 @@ pub struct RegisterSupplier {
     pub contact_phone: Option<String>,
 }
 
-pub async fn get_customer_id(db: &DatabaseConnection, token: &str) -> Result<i32, Error> {
-    use crate::entity::customers;
+pub async fn get_customer_supplier_id(
+    db: &DatabaseConnection,
+    token: &str,
+    role: &str,
+) -> Result<i32, Error> {
+    use crate::entity::{customers, suppliers};
 
-    let user_id = Auth::verify_token(token)?.user_id.parse::<i32>()?;
-    customers::Entity::find()
-        .filter(customers::Column::UserId.eq(user_id))
-        .one(db)
-        .await?
-        .map(|customer| customer.customer_id)
-        .ok_or_else(|| Error::new("Customer not found"))
+    match role {
+        "supplier" => {
+            let user_id = Auth::verify_token(token)?.user_id.parse::<i32>()?;
+            suppliers::Entity::find()
+                .filter(suppliers::Column::UserId.eq(user_id))
+                .one(db)
+                .await?
+                .map(|supplier| supplier.supplier_id)
+                .ok_or_else(|| Error::new("Supplier not found"))
+        }
+
+        "customer" => {
+            let user_id = Auth::verify_token(token)?.user_id.parse::<i32>()?;
+            customers::Entity::find()
+                .filter(customers::Column::UserId.eq(user_id))
+                .one(db)
+                .await?
+                .map(|customer| customer.customer_id)
+                .ok_or_else(|| Error::new("Customer not found"))
+        }
+        _ => Err(Error::new("Invalid role")),
+    }
 }

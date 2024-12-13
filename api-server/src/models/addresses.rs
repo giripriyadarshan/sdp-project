@@ -1,5 +1,10 @@
+use crate::entity::addresses;
 use crate::entity::addresses::Model as AddressModel;
 use async_graphql::{InputObject, SimpleObject};
+use sea_orm::ActiveValue::Set;
+use sea_orm::ColumnTrait;
+use sea_orm::EntityTrait;
+use sea_orm::{ActiveModelTrait, QueryFilter};
 
 #[derive(SimpleObject)]
 pub struct Addresses {
@@ -32,14 +37,29 @@ impl From<AddressModel> for Addresses {
 
 #[derive(InputObject)]
 pub struct RegisterAddress {
-    address_type: String,
-    city: String,
-    country: String,
-    customer_id: i64,
-    is_default: bool,
-    postal_code: String,
-    state: String,
-    street_address: String,
+    pub address_type: String,
+    pub city: String,
+    pub country: String,
+    pub customer_id: i64,
+    pub is_default: bool,
+    pub postal_code: String,
+    pub state: String,
+    pub street_address: String,
+}
+
+impl RegisterAddress {
+    pub(crate) fn clone(&self) -> RegisterAddress {
+        RegisterAddress {
+            address_type: self.address_type.clone(),
+            city: self.city.clone(),
+            country: self.country.clone(),
+            customer_id: self.customer_id,
+            is_default: self.is_default,
+            postal_code: self.postal_code.clone(),
+            state: self.state.clone(),
+            street_address: self.street_address.clone(),
+        }
+    }
 }
 
 #[derive(SimpleObject)]
@@ -50,5 +70,38 @@ pub struct AddressType {
 
 #[derive(InputObject)]
 pub struct RegisterAddressType {
-    name: String,
+    pub name: String,
+}
+
+pub async fn create_address(
+    input: RegisterAddress,
+    customer_id: i32,
+    address_type_id: i32,
+    txn: &sea_orm::DatabaseTransaction,
+) -> Result<addresses::ActiveModel, async_graphql::Error> {
+    //check if default address exists and make it not default
+    if input.is_default {
+        let default_address = addresses::Entity::find()
+            .filter(addresses::Column::CustomerId.eq(customer_id))
+            .filter(addresses::Column::IsDefault.eq(true))
+            .one(txn)
+            .await?;
+        if default_address.is_some() {
+            let mut default_address: addresses::ActiveModel = default_address.unwrap().into();
+            default_address.is_default = Set(Some(false));
+            default_address.update(txn).await?;
+        }
+    }
+
+    Ok(addresses::ActiveModel {
+        customer_id: Set(customer_id),
+        address_type_id: Set(Some(address_type_id)),
+        street_address: Set(input.street_address),
+        city: Set(input.city),
+        state: Set(Some(input.state)),
+        country: Set(input.country),
+        postal_code: Set(input.postal_code),
+        is_default: Set(Some(input.is_default)),
+        ..Default::default()
+    })
 }
