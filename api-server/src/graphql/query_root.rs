@@ -1,5 +1,5 @@
 use crate::models::orders::Orders;
-use crate::models::products::paginate_products;
+use crate::models::products::{paginate_products, Discounts};
 use crate::models::user::get_customer_supplier_id;
 use crate::{
     auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
@@ -330,5 +330,109 @@ impl QueryRoot {
         }
 
         Ok(products_list)
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
+    async fn cart_items(&self, ctx: &Context<'_>) -> Result<Vec<Products>, async_graphql::Error> {
+        use crate::entity::{
+            cart_items,
+            prelude::{
+                CartItems as CartItemsEntity, Products as ProductsEntity,
+                ShoppingCarts as ShoppingCartsEntity,
+            },
+            shopping_carts,
+        };
+        let db = ctx.data::<DatabaseConnection>()?;
+        let token = ctx
+            .data_opt::<String>()
+            .ok_or("No authorization token found")?;
+
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
+
+        let cart_id = ShoppingCartsEntity::find()
+            .filter(shopping_carts::Column::CustomerId.eq(customer_id))
+            .one(db)
+            .await?
+            .unwrap()
+            .cart_id;
+
+        let cart_items = CartItemsEntity::find()
+            .filter(cart_items::Column::CartId.eq(cart_id))
+            .all(db)
+            .await?;
+
+        let mut products_list = Vec::new();
+
+        for cart_item in &cart_items {
+            products_list.push(
+                ProductsEntity::find_by_id(cart_item.product_id)
+                    .one(db)
+                    .await?
+                    .unwrap()
+                    .into(),
+            );
+        }
+
+        Ok(products_list)
+    }
+
+    async fn reviews(
+        &self,
+        ctx: &Context<'_>,
+        product_id: i32,
+        paginator: OrderAndPagination,
+    ) -> Result<Vec<Reviews>, async_graphql::Error> {
+        use crate::entity::{prelude::Reviews as ReviewsEntity, reviews};
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let page = paginator.pagination.page - 1;
+        let page_size = paginator.pagination.page_size;
+
+        let reviews = ReviewsEntity::find().filter(reviews::Column::ProductId.eq(product_id));
+
+        let reviews = reviews
+            .order_by_asc(reviews::Column::ReviewDate)
+            .paginate(db, page_size)
+            .fetch_page(page)
+            .await?;
+
+        let reviews: Vec<Reviews> = reviews.into_iter().map(|review| review.into()).collect();
+
+        Ok(reviews)
+    }
+
+    async fn discounts(&self, ctx: &Context<'_>) -> Result<Vec<Discounts>, async_graphql::Error> {
+        use crate::entity::prelude::Discounts as DiscountsEntity;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let discounts = DiscountsEntity::find().all(db).await?;
+
+        let discounts: Vec<Discounts> = discounts
+            .into_iter()
+            .map(|discount| discount.into())
+            .collect();
+
+        Ok(discounts)
+    }
+
+    async fn discounts_on_product(
+        &self,
+        ctx: &Context<'_>,
+        product_id: i32,
+    ) -> Result<Vec<Discounts>, async_graphql::Error> {
+        use crate::entity::{discounts, prelude::Discounts as DiscountsEntity};
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let discounts = DiscountsEntity::find()
+            .filter(discounts::Column::ProductId.eq(product_id))
+            .all(db)
+            .await?;
+
+        let discounts: Vec<Discounts> = discounts
+            .into_iter()
+            .map(|discount| discount.into())
+            .collect();
+
+        Ok(discounts)
     }
 }
