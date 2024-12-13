@@ -31,9 +31,9 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterUser,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::{sea_orm_active_enums::UserRole, users};
+        use crate::entity::{prelude::Users as UsersEntity, sea_orm_active_enums::UserRole, users};
 
-        if users::Entity::find()
+        if UsersEntity::find()
             .filter(users::Column::Email.eq(&input.email))
             .one(ctx.data::<DatabaseConnection>()?)
             .await?
@@ -61,7 +61,7 @@ impl MutationRoot {
             role: Set(role),
             ..Default::default()
         };
-        let insert_user = users::Entity::insert(user).exec_with_returning(db).await?;
+        let insert_user = UsersEntity::insert(user).exec_with_returning(db).await?;
 
         Ok(Auth::create_token(
             insert_user.user_id,
@@ -75,7 +75,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterCustomer,
     ) -> Result<Customers, async_graphql::Error> {
-        use crate::entity::customers;
+        use crate::entity::{customers, prelude::Customers as CustomersEntity};
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
@@ -85,11 +85,11 @@ impl MutationRoot {
         let customer = customers::ActiveModel {
             first_name: Set(input.first_name),
             last_name: Set(input.last_name),
-            user_id: Set(Auth::verify_token(&token)?.user_id.parse::<i32>()?),
+            user_id: Set(Auth::verify_token(token)?.user_id.parse::<i32>()?),
             ..Default::default()
         };
 
-        let insert_customer = customers::Entity::insert(customer)
+        let insert_customer = CustomersEntity::insert(customer)
             .exec_with_returning(db)
             .await?;
 
@@ -102,7 +102,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterSupplier,
     ) -> Result<Suppliers, async_graphql::Error> {
-        use crate::entity::suppliers;
+        use crate::entity::{prelude::Suppliers as SuppliersEntity, suppliers};
 
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
@@ -110,12 +110,12 @@ impl MutationRoot {
             .ok_or("No authorization token found")?;
 
         let supplier = suppliers::ActiveModel {
-            user_id: Set(Auth::verify_token(&token)?.user_id.parse::<i32>()?),
+            user_id: Set(Auth::verify_token(token)?.user_id.parse::<i32>()?),
             contact_phone: Set(input.contact_phone),
             ..Default::default()
         };
 
-        let insert_supplier = suppliers::Entity::insert(supplier)
+        let insert_supplier = SuppliersEntity::insert(supplier)
             .exec_with_returning(db)
             .await?;
 
@@ -127,11 +127,11 @@ impl MutationRoot {
         ctx: &Context<'_>,
         login_details: LoginUser,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::users;
+        use crate::entity::{prelude::Users as UsersEntity, users};
 
         let db = ctx.data::<DatabaseConnection>()?;
 
-        let user: Users = users::Entity::find()
+        let user: Users = UsersEntity::find()
             .filter(users::Column::Email.eq(&login_details.email))
             .one(db)
             .await
@@ -158,14 +158,14 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterProduct,
     ) -> Result<Products, async_graphql::Error> {
-        use crate::entity::products;
+        use crate::entity::prelude::Products as ProductsEntity;
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
-        let supplier_id = get_customer_supplier_id(db, &token, ROLE_SUPPLIER).await?;
+        let supplier_id = get_customer_supplier_id(db, token, ROLE_SUPPLIER).await?;
         let product = create_product_model(input, supplier_id)?;
-        let insert_product = products::Entity::insert(product)
+        let insert_product = ProductsEntity::insert(product)
             .exec_with_returning(db)
             .await?;
         Ok(insert_product.into())
@@ -178,15 +178,15 @@ impl MutationRoot {
         product_id: i32,
         input: RegisterProduct,
     ) -> Result<Products, async_graphql::Error> {
-        use crate::entity::products;
+        use crate::entity::{prelude::Products as ProductsEntity, products};
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
-        let supplier_id = get_customer_supplier_id(db, &token, ROLE_SUPPLIER).await?;
+        let supplier_id = get_customer_supplier_id(db, token, ROLE_SUPPLIER).await?;
         check_if_supplier_owns_product(db, supplier_id, product_id).await?;
         let product = create_product_model(input, supplier_id)?;
-        let update_product = products::Entity::update(product)
+        let update_product = ProductsEntity::update(product)
             .filter(products::Column::ProductId.eq(product_id))
             .exec(db)
             .await?;
@@ -199,16 +199,16 @@ impl MutationRoot {
         ctx: &Context<'_>,
         product_id: i32,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::products;
+        use crate::entity::prelude::Products as ProductsEntity;
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
 
-        let supplier_id = get_customer_supplier_id(db, &token, ROLE_SUPPLIER).await?;
+        let supplier_id = get_customer_supplier_id(db, token, ROLE_SUPPLIER).await?;
 
         check_if_supplier_owns_product(db, supplier_id, product_id).await?;
-        products::Entity::delete_by_id(product_id).exec(db).await?;
+        ProductsEntity::delete_by_id(product_id).exec(db).await?;
         Ok("Product deleted".to_string())
     }
 
@@ -218,17 +218,24 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterOrder,
     ) -> Result<Orders, async_graphql::Error> {
-        use crate::entity::{discounts, order_items, orders, products};
+        use crate::entity::{
+            discounts, order_items, orders,
+            prelude::{
+                Discounts as DiscountsEntity, OrderItems as OrderItemsEntity,
+                Orders as OrdersEntity, Products as ProductsEntity,
+            },
+            products,
+        };
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
         let discount_id = match &input.discount_code {
-            Some(discount_code) => products::Entity::find()
+            Some(discount_code) => ProductsEntity::find()
                 .filter(products::Column::Name.eq(discount_code))
                 .one(db)
                 .await
@@ -239,7 +246,7 @@ impl MutationRoot {
 
         let mut total_amount: f64 = 0.0;
         for item in &input.order_items {
-            let product: products::Model = products::Entity::find_by_id(item.product_id)
+            let product: products::Model = ProductsEntity::find_by_id(item.product_id)
                 .one(db)
                 .await
                 .map_err(|_| "Product not found")?
@@ -248,7 +255,7 @@ impl MutationRoot {
         }
 
         if let Some(discount_id) = discount_id {
-            let discount: discounts::Model = discounts::Entity::find_by_id(discount_id)
+            let discount: discounts::Model = DiscountsEntity::find_by_id(discount_id)
                 .one(&txn)
                 .await?
                 .unwrap();
@@ -275,12 +282,12 @@ impl MutationRoot {
             ..Default::default()
         };
 
-        let insert_order = orders::Entity::insert(order)
+        let insert_order = OrdersEntity::insert(order)
             .exec_with_returning(&txn)
             .await?;
 
         for item in &input.order_items {
-            let product: products::Model = products::Entity::find_by_id(item.product_id)
+            let product: products::Model = ProductsEntity::find_by_id(item.product_id)
                 .one(&txn)
                 .await?
                 .unwrap();
@@ -296,7 +303,7 @@ impl MutationRoot {
                 ..product.into()
             };
 
-            products::Entity::update(product)
+            ProductsEntity::update(product)
                 .filter(products::Column::ProductId.eq(item.product_id))
                 .exec(&txn)
                 .await?;
@@ -308,7 +315,7 @@ impl MutationRoot {
                 unit_price: Set(product_base_price),
                 ..Default::default()
             };
-            order_items::Entity::insert(order_item).exec(&txn).await?;
+            OrderItemsEntity::insert(order_item).exec(&txn).await?;
         }
 
         txn.commit().await?;
@@ -323,11 +330,11 @@ impl MutationRoot {
         order_id: i32,
         status: String,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::orders;
+        use crate::entity::{orders, prelude::Orders as OrdersEntity};
         let db = ctx.data::<DatabaseConnection>()?;
         let txn = db.begin().await?;
 
-        let order: orders::Model = orders::Entity::find_by_id(order_id)
+        let order: orders::Model = OrdersEntity::find_by_id(order_id)
             .one(&txn)
             .await
             .map_err(|_| "Order not found")?
@@ -338,7 +345,7 @@ impl MutationRoot {
             ..order.into()
         };
 
-        orders::Entity::update(update_order)
+        OrdersEntity::update(update_order)
             .filter(orders::Column::OrderId.eq(order_id))
             .exec(&txn)
             .await?;
@@ -354,19 +361,19 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterPaymentMethod,
     ) -> Result<PaymentMethods, async_graphql::Error> {
-        use crate::entity::payment_methods;
+        use crate::entity::prelude::PaymentMethods as PaymentMethodsEntity;
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
         let is_default: Option<bool> = Some(input.is_default.unwrap_or(false));
 
         let payment_method = create_payment_method(customer_id, is_default, input, &txn).await?;
 
-        let insert_payment_method = payment_methods::Entity::insert(payment_method)
+        let insert_payment_method = PaymentMethodsEntity::insert(payment_method)
             .exec_with_returning(&txn)
             .await?;
 
@@ -382,19 +389,19 @@ impl MutationRoot {
         payment_method_id: i32,
         input: RegisterPaymentMethod,
     ) -> Result<PaymentMethods, async_graphql::Error> {
-        use crate::entity::payment_methods;
+        use crate::entity::{payment_methods, prelude::PaymentMethods as PaymentMethodsEntity};
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
         let is_default: Option<bool> = Some(input.is_default.unwrap_or(false));
 
         let payment_method = create_payment_method(customer_id, is_default, input, &txn).await?;
 
-        let update_payment_method = payment_methods::Entity::update(payment_method)
+        let update_payment_method = PaymentMethodsEntity::update(payment_method)
             .filter(payment_methods::Column::PaymentMethodId.eq(payment_method_id))
             .exec(&txn)
             .await?;
@@ -411,18 +418,22 @@ impl MutationRoot {
         product_id: i32,
         quantity: i32,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::{cart_items, shopping_carts};
+        use crate::entity::{
+            cart_items,
+            prelude::{CartItems as CartItemsEntity, ShoppingCarts as ShoppingCartsEntity},
+            shopping_carts,
+        };
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
         check_product_exists(&txn, product_id).await?;
 
-        let cart = match shopping_carts::Entity::find()
+        let cart = match ShoppingCartsEntity::find()
             .filter(shopping_carts::Column::CustomerId.eq(customer_id))
             .one(&txn)
             .await?
@@ -444,7 +455,7 @@ impl MutationRoot {
             ..Default::default()
         };
 
-        cart_items::Entity::insert(cart_item).exec(&txn).await?;
+        CartItemsEntity::insert(cart_item).exec(&txn).await?;
         txn.commit().await?;
 
         Ok("Product added to cart".to_string())
@@ -458,23 +469,26 @@ impl MutationRoot {
         quantity: i32,
         cart_id: i32,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::{cart_items, shopping_carts};
+        use crate::entity::{
+            cart_items,
+            prelude::{CartItems as CartItemsEntity, ShoppingCarts as ShoppingCartsEntity},
+        };
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
         check_product_exists(&txn, product_id).await?;
 
-        let cart = shopping_carts::Entity::find_by_id(cart_id)
+        let cart = ShoppingCartsEntity::find_by_id(cart_id)
             .one(&txn)
             .await?
             .ok_or("Cart not found")?;
 
-        let cart_item = cart_items::Entity::find()
+        let cart_item = CartItemsEntity::find()
             .filter(cart_items::Column::CartId.eq(cart.cart_id))
             .filter(cart_items::Column::ProductId.eq(product_id))
             .one(&txn)
@@ -504,18 +518,22 @@ impl MutationRoot {
         ctx: &Context<'_>,
         product_id: i32,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::{cart_items, shopping_carts};
+        use crate::entity::{
+            cart_items,
+            prelude::{CartItems as CartItemsEntity, ShoppingCarts as ShoppingCartsEntity},
+            shopping_carts,
+        };
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
         check_product_exists(&txn, product_id).await?;
 
-        let cart = match shopping_carts::Entity::find()
+        let cart = match ShoppingCartsEntity::find()
             .filter(shopping_carts::Column::CustomerId.eq(customer_id))
             .one(&txn)
             .await?
@@ -526,7 +544,7 @@ impl MutationRoot {
             }
         };
 
-        let cart_item = cart_items::Entity::find()
+        let cart_item = CartItemsEntity::find()
             .filter(cart_items::Column::CartId.eq(cart.cart_id))
             .filter(cart_items::Column::ProductId.eq(product_id))
             .one(&txn)
@@ -546,18 +564,23 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterReview,
     ) -> Result<Reviews, async_graphql::Error> {
-        use crate::entity::{order_items, orders, reviews};
+        use crate::entity::{
+            orders,
+            prelude::{
+                OrderItems as OrderItemsEntity, Orders as OrdersEntity, Reviews as ReviewsEntity,
+            },
+        };
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
         // check if customer has ordered the product
-        if order_items::Entity::find()
-            .inner_join(orders::Entity)
+        if OrderItemsEntity::find()
+            .inner_join(OrdersEntity)
             .filter(orders::Column::CustomerId.eq(customer_id))
             .one(&txn)
             .await?
@@ -568,7 +591,7 @@ impl MutationRoot {
 
         let review = create_review_model(input, customer_id)?;
 
-        let insert_review = reviews::Entity::insert(review)
+        let insert_review = ReviewsEntity::insert(review)
             .exec_with_returning(&txn)
             .await?;
 
@@ -584,18 +607,18 @@ impl MutationRoot {
         review_id: i32,
         input: RegisterReview,
     ) -> Result<Reviews, async_graphql::Error> {
-        use crate::entity::reviews;
+        use crate::entity::{prelude::Reviews as ReviewsEntity, reviews};
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
         let review = create_review_model(input, customer_id)?;
 
-        let update_review = reviews::Entity::update(review)
+        let update_review = ReviewsEntity::update(review)
             .filter(reviews::Column::ReviewId.eq(review_id))
             .exec(&txn)
             .await?;
@@ -611,16 +634,16 @@ impl MutationRoot {
         ctx: &Context<'_>,
         review_id: i32,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::reviews;
+        use crate::entity::{prelude::Reviews as ReviewsEntity, reviews};
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
 
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
-        let review = reviews::Entity::find()
+        let review = ReviewsEntity::find()
             .filter(reviews::Column::ReviewId.eq(review_id))
             .one(&txn)
             .await?
@@ -643,17 +666,17 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterDiscount,
     ) -> Result<Discounts, async_graphql::Error> {
-        use crate::entity::discounts;
+        use crate::entity::prelude::Discounts as DiscountsEntity;
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
-        let supplier_id = get_customer_supplier_id(db, &token, ROLE_SUPPLIER).await?;
+        let supplier_id = get_customer_supplier_id(db, token, ROLE_SUPPLIER).await?;
 
         check_if_supplier_owns_product(db, supplier_id, input.product_id).await?;
 
         let discount = create_discount_model(input)?;
-        let insert_discount = discounts::Entity::insert(discount)
+        let insert_discount = DiscountsEntity::insert(discount)
             .exec_with_returning(db)
             .await?;
         Ok(insert_discount.into())
@@ -666,17 +689,17 @@ impl MutationRoot {
         discount_id: i32,
         input: RegisterDiscount,
     ) -> Result<Discounts, async_graphql::Error> {
-        use crate::entity::discounts;
+        use crate::entity::{discounts, prelude::Discounts as DiscountsEntity};
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
-        let supplier_id = get_customer_supplier_id(db, &token, ROLE_SUPPLIER).await?;
+        let supplier_id = get_customer_supplier_id(db, token, ROLE_SUPPLIER).await?;
 
         check_if_supplier_owns_product(db, supplier_id, input.product_id).await?;
 
         let discount = create_discount_model(input)?;
-        let update_discount = discounts::Entity::update(discount)
+        let update_discount = DiscountsEntity::update(discount)
             .filter(discounts::Column::DiscountId.eq(discount_id))
             .exec(db)
             .await?;
@@ -690,18 +713,16 @@ impl MutationRoot {
         discount_id: i32,
         product_id: i32,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::discounts;
+        use crate::entity::prelude::Discounts as DiscountsEntity;
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
-        let supplier_id = get_customer_supplier_id(db, &token, ROLE_SUPPLIER).await?;
+        let supplier_id = get_customer_supplier_id(db, token, ROLE_SUPPLIER).await?;
 
         check_if_supplier_owns_product(db, supplier_id, product_id).await?;
 
-        discounts::Entity::delete_by_id(discount_id)
-            .exec(db)
-            .await?;
+        DiscountsEntity::delete_by_id(discount_id).exec(db).await?;
         Ok("Discount deleted".to_string())
     }
 
@@ -711,27 +732,30 @@ impl MutationRoot {
         ctx: &Context<'_>,
         input: RegisterAddress,
     ) -> Result<Addresses, async_graphql::Error> {
-        use crate::entity::{address_types, addresses};
+        use crate::entity::{
+            address_types,
+            prelude::{AddressTypes as AddressTypesEntity, Addresses as AddressesEntity},
+        };
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
         let address_type = address_types::ActiveModel {
             name: Set(input.clone().address_type),
             ..Default::default()
         };
 
-        let address_type_id = address_types::Entity::insert(address_type)
+        let address_type_id = AddressTypesEntity::insert(address_type)
             .exec(&txn)
             .await?
             .last_insert_id;
 
         let address = create_address(input, customer_id, address_type_id, &txn).await?;
 
-        let insert_address = addresses::Entity::insert(address)
+        let insert_address = AddressesEntity::insert(address)
             .exec_with_returning(&txn)
             .await?;
 
@@ -748,17 +772,17 @@ impl MutationRoot {
         address_type_id: i32,
         input: RegisterAddress,
     ) -> Result<Addresses, async_graphql::Error> {
-        use crate::entity::addresses;
+        use crate::entity::{addresses, prelude::Addresses as AddressesEntity};
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
         let address = create_address(input, customer_id, address_type_id, &txn).await?;
 
-        let update_address = addresses::Entity::update(address)
+        let update_address = AddressesEntity::update(address)
             .filter(addresses::Column::AddressId.eq(address_id))
             .exec(&txn)
             .await?;
@@ -774,15 +798,18 @@ impl MutationRoot {
         ctx: &Context<'_>,
         address_id: i32,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::{address_types, addresses};
+        use crate::entity::{
+            addresses,
+            prelude::{AddressTypes as AddressTypesEntity, Addresses as AddressesEntity},
+        };
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
-        let address = addresses::Entity::find()
+        let address = AddressesEntity::find()
             .filter(addresses::Column::AddressId.eq(address_id))
             .one(&txn)
             .await?
@@ -796,7 +823,7 @@ impl MutationRoot {
             return Err("Cannot delete default address".into());
         }
 
-        let address_type = address_types::Entity::find_by_id(address.address_type_id.unwrap())
+        let address_type = AddressTypesEntity::find_by_id(address.address_type_id.unwrap())
             .one(&txn)
             .await?
             .ok_or("Address type not found")?;
@@ -816,21 +843,24 @@ impl MutationRoot {
         address_type_id: i32,
         name: String,
     ) -> Result<String, async_graphql::Error> {
-        use crate::entity::{address_types, addresses};
+        use crate::entity::{
+            address_types, addresses,
+            prelude::{AddressTypes as AddressTypesEntity, Addresses as AddressesEntity},
+        };
         let db = ctx.data::<DatabaseConnection>()?;
         let token = ctx
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         let txn = db.begin().await?;
-        let customer_id = get_customer_supplier_id(db, &token, ROLE_CUSTOMER).await?;
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
-        let address_type = address_types::Entity::find()
+        let address_type = AddressTypesEntity::find()
             .filter(address_types::Column::AddressTypeId.eq(address_type_id))
             .one(&txn)
             .await?
             .ok_or("Address type not found")?;
 
-        let address = addresses::Entity::find()
+        let address = AddressesEntity::find()
             .filter(addresses::Column::AddressTypeId.eq(address_type_id))
             .one(&txn)
             .await?
