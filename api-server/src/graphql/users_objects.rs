@@ -46,8 +46,10 @@ impl UsersQuery {
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
 
+        let user_id = Auth::verify_token(token)?.user_id.parse::<i32>()?;
+
         let customer = CustomersEntity::find()
-            .filter(customers::Column::UserId.eq(Auth::verify_token(token)?.user_id))
+            .filter(customers::Column::UserId.eq(user_id))
             .one(db)
             .await
             .map_err(|_| "Customer not found")?
