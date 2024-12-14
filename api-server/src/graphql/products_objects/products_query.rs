@@ -142,39 +142,6 @@ impl ProductsQuery {
         })
     }
 
-    async fn reviews(
-        &self,
-        ctx: &Context<'_>,
-        product_id: i32,
-        paginator: OrderAndPagination,
-    ) -> Result<ReviewsPaginate, async_graphql::Error> {
-        use crate::entity::{prelude::Reviews as ReviewsEntity, reviews};
-        let db = ctx.data::<DatabaseConnection>()?;
-
-        let page = paginator.pagination.page - 1;
-        let page_size = paginator.pagination.page_size;
-
-        let reviews = ReviewsEntity::find().filter(reviews::Column::ProductId.eq(product_id));
-
-        let reviews = reviews
-            .order_by_asc(reviews::Column::ReviewDate)
-            .paginate(db, page_size);
-
-        let items = PageInfo {
-            total_pages: reviews.num_pages().await?,
-            total_items: reviews.num_items().await?,
-        };
-
-        let reviews = reviews.fetch_page(page).await?;
-
-        let reviews: Vec<Reviews> = reviews.into_iter().map(|review| review.into()).collect();
-
-        Ok(ReviewsPaginate {
-            reviews,
-            page_info: items,
-        })
-    }
-
     async fn discounts(&self, ctx: &Context<'_>) -> Result<Vec<Discounts>, async_graphql::Error> {
         use crate::entity::prelude::Discounts as DiscountsEntity;
         let db = ctx.data::<DatabaseConnection>()?;
