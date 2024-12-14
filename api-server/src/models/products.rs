@@ -106,7 +106,7 @@ pub fn create_product_model(
     Ok(products::ActiveModel {
         name: Set(input.name.clone()),
         description: Set(input.description.clone()),
-        base_price: Set(input.base_price.parse::<i64>().unwrap().into()),
+        base_price: Set(input.base_price.parse::<f32>().unwrap().try_into().unwrap()),
         supplier_id: Set(Some(supplier_id)),
         ..Default::default()
     })
