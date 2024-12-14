@@ -7,7 +7,8 @@ use crate::{
 };
 use async_graphql::{Context, Object};
 use sea_orm::{
-    ActiveEnum, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
+    ActiveEnum, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
+    QueryFilter,
 };
 
 #[derive(Default)]
@@ -212,5 +213,44 @@ impl UsersMutation {
             .data_opt::<String>()
             .ok_or("No authorization token found")?;
         Ok(Auth::refresh_token(token)?)
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER, ROLE_SUPPLIER)")]
+    async fn change_password(
+        &self,
+        ctx: &Context<'_>,
+        old_password: String,
+        new_password: String,
+    ) -> Result<String, async_graphql::Error> {
+        use crate::entity::{prelude::Users as UsersEntity, users};
+
+        let token = ctx
+            .data_opt::<String>()
+            .ok_or("No authorization token found")?;
+        let user_id = Auth::verify_token(token)?.user_id.parse::<i32>()?;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let user = UsersEntity::find_by_id(user_id)
+            .one(db)
+            .await
+            .map_err(|_| "User not found")?
+            .unwrap();
+
+        let user_model: Users = user.clone().into();
+
+        match Auth::verify_password(&old_password, &user_model.password) {
+            Ok(verification_status) => {
+                if verification_status {
+                    let new_password = Auth::hash_password(&new_password)?;
+                    let mut user: users::ActiveModel = user.into();
+                    user.password = Set(new_password);
+                    user.update(db).await?;
+                    Ok("Password updated successfully".to_string())
+                } else {
+                    Err("Invalid password".into())
+                }
+            }
+            Err(_) => Err("Password not readable, please reset password".into()),
+        }
     }
 }
