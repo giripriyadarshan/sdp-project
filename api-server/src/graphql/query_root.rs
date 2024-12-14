@@ -4,10 +4,13 @@ use crate::{
     models::{
         addresses::Addresses,
         bills::Bills,
-        order_und_pagination::{OrderAndPagination, PageInfo, WithPaginate},
+        order_und_pagination::{OrderAndPagination, PageInfo},
         orders::Orders,
         payments::{CardTypes, PaymentMethods},
-        products::{paginate_products, Categories, Discounts, Products, Reviews},
+        products::{
+            paginate_products, Categories, Discounts, Products, ProductsPaginate, Reviews,
+            ReviewsPaginate,
+        },
         user::{get_customer_supplier_id, Customers, Suppliers, Users},
     },
 };
@@ -28,7 +31,7 @@ impl QueryRoot {
         supplier_id: Option<i32>,
         base_product_id: Option<i32>,
         paginator: OrderAndPagination,
-    ) -> Result<WithPaginate<Vec<Products>, PageInfo>, async_graphql::Error> {
+    ) -> Result<ProductsPaginate, async_graphql::Error> {
         use crate::entity::{prelude::Products as ProductsEntity, products};
         let db = ctx.data::<DatabaseConnection>()?;
 
@@ -59,9 +62,9 @@ impl QueryRoot {
 
         let products: Vec<Products> = products.into_iter().map(|product| product.into()).collect();
 
-        Ok(WithPaginate {
-            data: products,
-            paginate: items,
+        Ok(ProductsPaginate {
+            products,
+            page_info: items,
         })
     }
 
@@ -70,7 +73,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         name: String,
         paginator: OrderAndPagination,
-    ) -> Result<WithPaginate<Vec<Products>, PageInfo>, async_graphql::Error> {
+    ) -> Result<ProductsPaginate, async_graphql::Error> {
         use crate::entity::{prelude::Products as ProductsEntity, products};
         let db = ctx.data::<DatabaseConnection>()?;
 
@@ -91,9 +94,9 @@ impl QueryRoot {
 
         let products: Vec<Products> = products.into_iter().map(|product| product.into()).collect();
 
-        Ok(WithPaginate {
-            data: products,
-            paginate: items,
+        Ok(ProductsPaginate {
+            products,
+            page_info: items,
         })
     }
 
@@ -174,7 +177,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         product_id: i32,
         paginator: OrderAndPagination,
-    ) -> Result<WithPaginate<Vec<Reviews>, PageInfo>, async_graphql::Error> {
+    ) -> Result<ReviewsPaginate, async_graphql::Error> {
         use crate::entity::{prelude::Reviews as ReviewsEntity, reviews};
         let db = ctx.data::<DatabaseConnection>()?;
 
@@ -196,9 +199,9 @@ impl QueryRoot {
 
         let reviews: Vec<Reviews> = reviews.into_iter().map(|review| review.into()).collect();
 
-        Ok(WithPaginate {
-            data: reviews,
-            paginate: items,
+        Ok(ReviewsPaginate {
+            reviews,
+            page_info: items,
         })
     }
 
@@ -435,7 +438,7 @@ impl QueryRoot {
         ctx: &Context<'_>,
         product_id: i32,
         paginator: OrderAndPagination,
-    ) -> Result<WithPaginate<Vec<Reviews>, PageInfo>, async_graphql::Error> {
+    ) -> Result<ReviewsPaginate, async_graphql::Error> {
         use crate::entity::{prelude::Reviews as ReviewsEntity, reviews};
         let db = ctx.data::<DatabaseConnection>()?;
 
@@ -457,9 +460,9 @@ impl QueryRoot {
 
         let reviews: Vec<Reviews> = reviews.into_iter().map(|review| review.into()).collect();
 
-        Ok(WithPaginate {
-            data: reviews,
-            paginate: items,
+        Ok(ReviewsPaginate {
+            reviews,
+            page_info: items,
         })
     }
 

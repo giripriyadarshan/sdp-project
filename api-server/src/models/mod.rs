@@ -7,7 +7,7 @@ pub mod products;
 pub mod user;
 
 pub mod order_und_pagination {
-    use async_graphql::{Enum, InputObject, OutputType, SimpleObject};
+    use async_graphql::{Enum, InputObject, SimpleObject};
 
     #[derive(InputObject)]
     pub struct Pagination {
@@ -43,11 +43,5 @@ pub mod order_und_pagination {
     pub struct PageInfo {
         pub total_pages: u64,
         pub total_items: u64,
-    }
-
-    #[derive(SimpleObject)]
-    pub struct WithPaginate<T: OutputType, F: OutputType> {
-        pub data: T,
-        pub paginate: F,
     }
 }

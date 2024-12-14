@@ -4,7 +4,7 @@ use crate::{
         products::Entity as ProductsEntity, products::Model as ProductsModel,
         reviews::Model as ReviewsModel,
     },
-    models::order_und_pagination::{OrderAndPagination, OrderByColumn, OrderByOrder},
+    models::order_und_pagination::{OrderAndPagination, OrderByColumn, OrderByOrder, PageInfo},
 };
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::{
@@ -40,6 +40,12 @@ impl From<ProductsModel> for Products {
             base_product_id: val.base_product_id,
         }
     }
+}
+
+#[derive(SimpleObject)]
+pub struct ProductsPaginate {
+    pub products: Vec<Products>,
+    pub page_info: PageInfo,
 }
 
 pub async fn check_product_exists(
@@ -95,7 +101,7 @@ pub struct RegisterProduct {
 pub fn create_product_model(
     input: RegisterProduct,
     supplier_id: i32,
-) -> Result<crate::entity::products::ActiveModel, Error> {
+) -> Result<products::ActiveModel, Error> {
     use crate::entity::products;
     Ok(products::ActiveModel {
         name: Set(input.name.clone()),
@@ -239,6 +245,12 @@ impl From<ReviewsModel> for Reviews {
             media_paths: val.media_paths,
         }
     }
+}
+
+#[derive(SimpleObject)]
+pub struct ReviewsPaginate {
+    pub reviews: Vec<Reviews>,
+    pub page_info: PageInfo,
 }
 
 #[derive(InputObject)]
