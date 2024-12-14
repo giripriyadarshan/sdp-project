@@ -1,10 +1,6 @@
-use crate::entity::addresses;
-use crate::entity::addresses::Model as AddressModel;
+use crate::entity::addresses::{self, Model as AddressModel};
 use async_graphql::{InputObject, SimpleObject};
-use sea_orm::ActiveValue::Set;
-use sea_orm::ColumnTrait;
-use sea_orm::EntityTrait;
-use sea_orm::{ActiveModelTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 
 #[derive(SimpleObject)]
 pub struct Addresses {

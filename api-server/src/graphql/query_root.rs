@@ -1,17 +1,14 @@
-use crate::models::bills::Bills;
-use crate::models::order_und_pagination::WithPaginate;
-use crate::models::orders::Orders;
-use crate::models::products::{paginate_products, Discounts};
-use crate::models::user::get_customer_supplier_id;
 use crate::{
     auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
     models::{
         addresses::Addresses,
-        order_und_pagination::{OrderAndPagination, PageInfo},
+        bills::Bills,
+        order_und_pagination::{OrderAndPagination, PageInfo, WithPaginate},
+        orders::Orders,
         payments::{CardTypes, PaymentMethods},
-        products::{Categories, Products, Reviews},
-        user::{Customers, Suppliers, Users},
+        products::{paginate_products, Categories, Discounts, Products, Reviews},
+        user::{get_customer_supplier_id, Customers, Suppliers, Users},
     },
 };
 use async_graphql::{Context, Object};

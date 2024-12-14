@@ -1,11 +1,13 @@
 use crate::entity::{
-    card_types, card_types::Model as CardTypesModel, payment_methods,
-    payment_methods::Model as PaymentMethodsModel, sea_orm_active_enums::PaymentMethodType,
+    card_types::{self, Model as CardTypesModel},
+    payment_methods::{self, Model as PaymentMethodsModel},
+    sea_orm_active_enums::PaymentMethodType,
 };
 use async_graphql::{InputObject, SimpleObject};
-use sea_orm::QueryFilter;
-use sea_orm::{prelude::Date, ActiveEnum, ActiveValue::Set, DatabaseTransaction, EntityTrait};
-use sea_orm::{ActiveModelTrait, ColumnTrait};
+use sea_orm::{
+    prelude::Date, ActiveEnum, ActiveModelTrait, ActiveValue::Set, ColumnTrait,
+    DatabaseTransaction, EntityTrait, QueryFilter,
+};
 
 #[derive(SimpleObject)]
 pub struct PaymentMethods {
