@@ -879,4 +879,12 @@ impl MutationRoot {
 
         Ok("Address type updated".to_string())
     }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER, ROLE_SUPPLIER)")]
+    async fn refresh_token(&self, ctx: &Context<'_>) -> Result<String, async_graphql::Error> {
+        let token = ctx
+            .data_opt::<String>()
+            .ok_or("No authorization token found")?;
+        Ok(Auth::refresh_token(token)?)
+    }
 }

@@ -1,3 +1,4 @@
+use sea_orm::DbErr;
 use std::fmt;
 
 #[derive(thiserror::Error, Debug)]
@@ -6,7 +7,7 @@ pub enum AppError {
     Database {
         message: String,
         #[source]
-        source: sea_orm::DbErr,
+        source: DbErr,
         context: Option<String>,
     },
 
@@ -36,7 +37,6 @@ pub enum AuthErrorCode {
     InvalidCredentials,
     TokenExpired,
     InsufficientPermissions,
-    AccountLocked,
 }
 
 impl fmt::Display for AuthErrorCode {
@@ -45,13 +45,12 @@ impl fmt::Display for AuthErrorCode {
             Self::InvalidCredentials => write!(f, "INVALID_CREDENTIALS"),
             Self::TokenExpired => write!(f, "TOKEN_EXPIRED"),
             Self::InsufficientPermissions => write!(f, "INSUFFICIENT_PERMISSIONS"),
-            Self::AccountLocked => write!(f, "ACCOUNT_LOCKED"),
         }
     }
 }
 
-impl From<sea_orm::DbErr> for AppError {
-    fn from(err: sea_orm::DbErr) -> Self {
+impl From<DbErr> for AppError {
+    fn from(err: DbErr) -> Self {
         Self::Database {
             message: err.to_string(),
             source: err,

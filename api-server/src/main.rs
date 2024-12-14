@@ -4,7 +4,10 @@ mod error;
 mod graphql;
 mod models;
 
-use crate::graphql::schema::{graphiql, graphql_handler};
+use crate::{
+    error::AppError,
+    graphql::schema::{graphiql, graphql_handler},
+};
 use axum::{routing::get, Extension, Router};
 use dotenv::dotenv;
 use redis::Client as RedisClient;
@@ -13,15 +16,25 @@ use std::env;
 use tokio::net::TcpListener;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), AppError> {
     dotenv().ok();
+
     // Initialize SeaORM
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let db = Database::connect(&database_url).await?;
+    let database_url = env::var("DATABASE_URL")
+        .map_err(|_| AppError::Internal("DATABASE_URL must be set".to_string()))?;
+    let db = Database::connect(&database_url)
+        .await
+        .map_err(|e| AppError::Database {
+            message: "Failed to connect to database".to_string(),
+            source: e,
+            context: None,
+        })?;
 
     // Initialize Redis
-    let redis_url = env::var("REDIS_URL").expect("REDIS_URL must be set");
-    let redis = RedisClient::open(redis_url)?;
+    let redis_url = env::var("REDIS_URL")
+        .map_err(|_| AppError::Internal("REDIS_URL must be set".to_string()))?;
+    let redis = RedisClient::open(redis_url)
+        .map_err(|e| AppError::Internal(format!("Failed to connect to Redis: {}", e)))?;
 
     let schema = graphql::schema::create_schema(db.clone(), redis.clone());
 
@@ -29,21 +42,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "/",
         get(graphiql).post(graphql_handler).layer(Extension(schema)),
     );
-    println!(
-        "GraphQL server running at http://localhost:{}/",
-        env::var("PORT").unwrap_or_else(|_| "Err: No PORT SET".to_string())
-    );
+
+    let port = env::var("PORT").map_err(|_| AppError::Internal("PORT must be set".to_string()))?;
+    println!("GraphQL server running at http://localhost:{}/", port);
 
     axum::serve(
-        TcpListener::bind(format!(
-            "0.0.0.0:{}",
-            env::var("PORT").expect("PORT must be set")
-        ))
-        .await
-        .unwrap(),
+        TcpListener::bind(format!("0.0.0.0:{}", port))
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to bind to port: {}", e)))?,
         app,
     )
-    .await?;
+    .await
+    .map_err(|e| AppError::Internal(format!("Server error: {}", e)))?;
 
     Ok(())
 }
