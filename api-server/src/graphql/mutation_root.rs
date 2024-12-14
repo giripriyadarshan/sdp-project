@@ -1,6 +1,6 @@
 use crate::models::addresses::{create_address, Addresses, RegisterAddress};
 use crate::{
-    auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
+    auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
     models::{
         orders::{Orders, RegisterOrder},

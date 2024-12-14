@@ -1,5 +1,5 @@
 use crate::{
-    auth::auth::Auth,
+    auth::Auth,
     entity::{
         customers::Model as CustomersModel, suppliers::Model as SuppliersModel,
         users::Model as UsersModel,

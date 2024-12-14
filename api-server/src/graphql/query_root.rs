@@ -3,7 +3,7 @@ use crate::models::orders::Orders;
 use crate::models::products::{paginate_products, Discounts};
 use crate::models::user::get_customer_supplier_id;
 use crate::{
-    auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
+    auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
     models::{
         addresses::Addresses,
@@ -400,6 +400,39 @@ impl QueryRoot {
         }
 
         Ok(products_list)
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
+    async fn bills(
+        &self,
+        ctx: &Context<'_>,
+        paginator: OrderAndPagination,
+    ) -> Result<WithPaginate<Vec<Orders>, PageInfo>, async_graphql::Error> {
+        use crate::entity::{bills, prelude::Orders as OrdersEntity};
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let page = paginator.pagination.page - 1;
+        let page_size = paginator.pagination.page_size;
+
+        let orders = OrdersEntity::find().filter(bills::Column::OrderId.is_not_null());
+
+        let orders = orders
+            .order_by_asc(bills::Column::BillDate)
+            .paginate(db, page_size);
+
+        let items = PageInfo {
+            total_pages: orders.num_pages().await?,
+            total_items: orders.num_items().await?,
+        };
+
+        let orders = orders.fetch_page(page).await?;
+
+        let orders: Vec<Orders> = orders.into_iter().map(|order| order.into()).collect();
+
+        Ok(WithPaginate {
+            data: orders,
+            paginate: items,
+        })
     }
 
     async fn reviews(
