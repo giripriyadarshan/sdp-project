@@ -1,9 +1,10 @@
+use crate::models::bills::Bills;
 use crate::models::order_und_pagination::WithPaginate;
 use crate::models::orders::Orders;
 use crate::models::products::{paginate_products, Discounts};
 use crate::models::user::get_customer_supplier_id;
 use crate::{
-    auth::auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
+    auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
     models::{
         addresses::Addresses,
@@ -400,6 +401,36 @@ impl QueryRoot {
         }
 
         Ok(products_list)
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
+    async fn bills(&self, ctx: &Context<'_>) -> Result<Vec<Bills>, async_graphql::Error> {
+        use crate::entity::{
+            bills, orders, prelude::Bills as BillsEntity, prelude::Orders as OrdersEntity,
+        };
+        let db = ctx.data::<DatabaseConnection>()?;
+        let token = ctx
+            .data_opt::<String>()
+            .ok_or("No authorization token found")?;
+
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
+
+        let orders = OrdersEntity::find()
+            .filter(orders::Column::CustomerId.eq(customer_id))
+            .all(db)
+            .await?;
+
+        let mut bills_list = Vec::new();
+
+        for order in &orders {
+            let bill = BillsEntity::find()
+                .filter(bills::Column::OrderId.eq(order.order_id))
+                .one(db)
+                .await?;
+            bills_list.push(bill.unwrap().into());
+        }
+
+        Ok(bills_list)
     }
 
     async fn reviews(
