@@ -130,6 +130,14 @@ impl Auth {
         Ok(())
     }
 
+    pub fn check_email(email: &str) -> Result<(), &'static str> {
+        if !regex!(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").is_match(email) {
+            return Err("Invalid email address");
+        }
+
+        Ok(())
+    }
+
     // // TODO: implement token revocation in GraphQL models (mutation) or skip implementation if it takes too much time/resources.
     // pub fn revoke_token(token: &str) -> Result<(), jsonwebtoken::errors::Error> {
     //     let claims = Auth::verify_token(token)?;

@@ -89,6 +89,8 @@ impl UsersMutation {
     ) -> Result<String, async_graphql::Error> {
         use crate::entity::{prelude::Users as UsersEntity, sea_orm_active_enums::UserRole, users};
 
+        Auth::check_email(&input.email)?;
+
         if UsersEntity::find()
             .filter(users::Column::Email.eq(&input.email))
             .one(ctx.data::<DatabaseConnection>()?)
