@@ -167,6 +167,7 @@ impl UsersMutation {
 
         let supplier = suppliers::ActiveModel {
             user_id: Set(Auth::verify_token(token)?.user_id.parse::<i32>()?),
+            name: Set(input.name),
             contact_phone: Set(input.contact_phone),
             ..Default::default()
         };
