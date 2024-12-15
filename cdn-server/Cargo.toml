@@ -1,0 +1,9 @@
+[package]
+name = "cdn-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7.9", features = ["multipart", "tokio", "ws"] }
+tokio = { version = "1.42.0", features = ["full"] }
+mime_guess = "2.0.5"
