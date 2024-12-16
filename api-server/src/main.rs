@@ -12,7 +12,10 @@ use crate::{
 use axum::{
     error_handling::HandleErrorLayer,
     http::{
-        header::{ACCESS_CONTROL_ALLOW_HEADERS, AUTHORIZATION, CONTENT_TYPE},
+        header::{
+            ACCESS_CONTROL_ALLOW_CREDENTIALS, ACCESS_CONTROL_ALLOW_HEADERS,
+            ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, CONTENT_TYPE,
+        },
         Method,
     },
     routing::get,
@@ -51,7 +54,14 @@ async fn main() -> Result<(), AppError> {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods([Method::GET, Method::POST])
-        .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCESS_CONTROL_ALLOW_HEADERS]);
+        .allow_headers([
+            AUTHORIZATION,
+            CONTENT_TYPE,
+            ACCESS_CONTROL_ALLOW_HEADERS,
+            ACCESS_CONTROL_ALLOW_CREDENTIALS,
+            ACCESS_CONTROL_ALLOW_ORIGIN,
+            ACCESS_CONTROL_ALLOW_METHODS,
+        ]);
 
     let middleware_stack = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(handle_error))
