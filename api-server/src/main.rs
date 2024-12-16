@@ -43,8 +43,8 @@ async fn main() -> Result<(), AppError> {
 
     let schema = graphql::schema::create_schema(db.clone(), redis.clone());
     let cors = CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST])
-        .allow_origin(Any);
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::POST]);
 
     let middleware_stack = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(handle_error))
