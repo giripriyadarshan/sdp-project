@@ -11,7 +11,10 @@ use crate::{
 };
 use axum::{
     error_handling::HandleErrorLayer,
-    http::{HeaderValue, Method},
+    http::{
+        header::{ACCESS_CONTROL_ALLOW_HEADERS, AUTHORIZATION, CONTENT_TYPE},
+        Method,
+    },
     routing::get,
     BoxError, Extension, Router,
 };
@@ -21,7 +24,7 @@ use sea_orm::Database;
 use std::env;
 use tokio::net::TcpListener;
 use tower::{layer::util::Identity, ServiceBuilder};
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -46,8 +49,9 @@ async fn main() -> Result<(), AppError> {
 
     let schema = graphql::schema::create_schema(db.clone(), redis.clone());
     let cors = CorsLayer::new()
-        .allow_origin("http://localhost:3004".parse::<HeaderValue>().unwrap())
-        .allow_methods([Method::GET, Method::POST]);
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCESS_CONTROL_ALLOW_HEADERS]);
 
     let middleware_stack = ServiceBuilder::new()
         .layer(HandleErrorLayer::new(handle_error))
