@@ -1,3 +1,6 @@
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::BoxError;
 use sea_orm::DbErr;
 use std::fmt;
 
@@ -17,16 +20,6 @@ pub enum AppError {
         code: AuthErrorCode,
         user_id: Option<String>,
     },
-
-    #[error("Validation error in {field}: {message}")]
-    Validation {
-        message: String,
-        field: String,
-        value: Option<String>,
-    },
-
-    #[error("Resource {resource} with id {id} not found")]
-    NotFound { resource: String, id: String },
 
     #[error("Internal server error: {0}")]
     Internal(String),
@@ -59,36 +52,6 @@ impl From<DbErr> for AppError {
     }
 }
 
-impl AppError {
-    pub fn with_context(self, context: impl Into<String>) -> Self {
-        match self {
-            Self::Database {
-                message, source, ..
-            } => Self::Database {
-                message,
-                source,
-                context: Some(context.into()),
-            },
-            error => error,
-        }
-    }
-
-    pub fn validation(field: impl Into<String>, message: impl Into<String>) -> Self {
-        Self::Validation {
-            message: message.into(),
-            field: field.into(),
-            value: None,
-        }
-    }
-
-    pub fn not_found(resource: impl Into<String>, id: impl Into<String>) -> Self {
-        Self::NotFound {
-            resource: resource.into(),
-            id: id.into(),
-        }
-    }
-}
-
 impl async_graphql::ErrorExtensions for AppError {
     fn extend(&self) -> async_graphql::Error {
         let error = async_graphql::Error::new(self.to_string());
@@ -115,28 +78,17 @@ impl async_graphql::ErrorExtensions for AppError {
                     e.set("userId", uid);
                 }
             }
-            AppError::Validation {
-                message,
-                field,
-                value,
-                ..
-            } => {
-                e.set("code", "VALIDATION_ERROR");
-                e.set("message", message);
-                e.set("field", field);
-                if let Some(v) = value {
-                    e.set("invalidValue", v);
-                }
-            }
-            AppError::NotFound { resource, id } => {
-                e.set("code", "NOT_FOUND");
-                e.set("resource", resource);
-                e.set("id", id);
-            }
             AppError::Internal(message) => {
                 e.set("code", "INTERNAL_ERROR");
                 e.set("message", message);
             }
         })
     }
+}
+
+pub async fn handle_error(error: BoxError) -> impl IntoResponse {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Unhandled internal error: {}", error),
+    )
 }

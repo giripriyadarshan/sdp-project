@@ -4,16 +4,21 @@ mod error;
 mod graphql;
 mod models;
 
+use crate::error::handle_error;
 use crate::{
     error::AppError,
     graphql::schema::{graphiql, graphql_handler},
 };
-use axum::{routing::get, Extension, Router};
+use axum::{
+    error_handling::HandleErrorLayer, http::Method, routing::get, BoxError, Extension, Router,
+};
 use dotenv::dotenv;
 use redis::Client as RedisClient;
 use sea_orm::Database;
 use std::env;
 use tokio::net::TcpListener;
+use tower::{layer::util::Identity, ServiceBuilder};
+use tower_http::cors::{Any, CorsLayer};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -37,10 +42,21 @@ async fn main() -> Result<(), AppError> {
         .map_err(|e| AppError::Internal(format!("Failed to connect to Redis: {}", e)))?;
 
     let schema = graphql::schema::create_schema(db.clone(), redis.clone());
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST])
+        .allow_origin(Any);
+
+    let middleware_stack = ServiceBuilder::new()
+        .layer(HandleErrorLayer::new(handle_error))
+        .layer(cors);
 
     let app = Router::new().route(
         "/",
-        get(graphiql).post(graphql_handler).layer(Extension(schema)),
+        get(graphiql)
+            .post(graphql_handler)
+            .layer::<_, BoxError>(Extension(schema))
+            .layer(Identity::new())
+            .layer(middleware_stack),
     );
 
     let port = env::var("PORT").map_err(|_| AppError::Internal("PORT must be set".to_string()))?;
