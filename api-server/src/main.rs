@@ -10,7 +10,10 @@ use crate::{
     graphql::schema::{graphiql, graphql_handler},
 };
 use axum::{
-    error_handling::HandleErrorLayer, http::Method, routing::get, BoxError, Extension, Router,
+    error_handling::HandleErrorLayer,
+    http::{HeaderValue, Method},
+    routing::get,
+    BoxError, Extension, Router,
 };
 use dotenv::dotenv;
 use redis::Client as RedisClient;
@@ -18,7 +21,7 @@ use sea_orm::Database;
 use std::env;
 use tokio::net::TcpListener;
 use tower::{layer::util::Identity, ServiceBuilder};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -43,7 +46,7 @@ async fn main() -> Result<(), AppError> {
 
     let schema = graphql::schema::create_schema(db.clone(), redis.clone());
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin("http://localhost:3004".parse::<HeaderValue>().unwrap())
         .allow_methods([Method::GET, Method::POST]);
 
     let middleware_stack = ServiceBuilder::new()
