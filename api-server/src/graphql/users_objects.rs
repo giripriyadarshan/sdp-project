@@ -6,6 +6,7 @@ use crate::{
     },
 };
 use async_graphql::{Context, Object};
+use chrono::Duration;
 use sea_orm::{
     ActiveEnum, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait,
     QueryFilter,
@@ -124,6 +125,7 @@ impl UsersMutation {
         Ok(Auth::create_token(
             insert_user.user_id,
             insert_user.role.to_value(),
+            Duration::days(30),
         )?)
     }
 
@@ -201,7 +203,11 @@ impl UsersMutation {
         match Auth::verify_password(&login_details.password, &user.password) {
             Ok(verification_status) => {
                 if verification_status {
-                    Ok(Auth::create_token(user.user_id, user.role)?)
+                    Ok(Auth::create_token(
+                        user.user_id,
+                        user.role,
+                        Duration::days(30),
+                    )?)
                 } else {
                     Err("Invalid password".into())
                 }
@@ -255,5 +261,26 @@ impl UsersMutation {
             }
             Err(_) => Err("Password not readable, please reset password".into()),
         }
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER, ROLE_SUPPLIER)")]
+    async fn send_email_verification(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<String, async_graphql::Error> {
+        use crate::entity::prelude::Users as UsersEntity;
+        let token = ctx
+            .data_opt::<String>()
+            .ok_or("No authorization token found")?;
+
+        let user_id = Auth::verify_token(token)?.user_id.parse::<i32>()?;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let user = UsersEntity::find_by_id(user_id).one(db).await?.unwrap();
+        let user_email = user.email;
+        let user_id = user.user_id;
+        let user_role = user.role.to_value();
+
+        Ok(Auth::send_email_verification(user_email, user_id, user_role).await?)
     }
 }

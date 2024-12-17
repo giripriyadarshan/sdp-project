@@ -37,14 +37,13 @@ pub struct MutationRoot(
     UsersMutation,
 );
 
-pub fn create_schema(db: DatabaseConnection, redis: redis::Client) -> AppSchema {
+pub fn create_schema(db: DatabaseConnection) -> AppSchema {
     Schema::build(
         QueryRoot::default(),
         MutationRoot::default(),
         EmptySubscription,
     )
     .data(db)
-    .data(redis)
     .finish()
 }
 

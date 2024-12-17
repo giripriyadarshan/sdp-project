@@ -4,9 +4,11 @@ use argon2::{
     Algorithm, Argon2, Params, Version,
 };
 use async_graphql::*;
-use chrono::{Duration, Utc};
+use chrono::{Duration, TimeDelta, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use lazy_regex::regex;
+use mail_send::mail_builder::MessageBuilder;
+use mail_send::SmtpClientBuilder;
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -52,12 +54,16 @@ impl Auth {
         .is_ok())
     }
 
-    pub fn create_token(user_id: i32, role: String) -> Result<String, AppError> {
+    pub fn create_token(
+        user_id: i32,
+        role: String,
+        duration: TimeDelta,
+    ) -> Result<String, AppError> {
         let now = Utc::now();
         let claims = Claims {
             user_id: user_id.to_string(),
             role,
-            exp: (now + Duration::days(30)).timestamp(), // 30 days might be unconventional, but we need it because refresh tokens implementation is limited due to OS limitations. also revoke token will prevent misuse (maybe, idk)
+            exp: (now + duration).timestamp(), // 30 days might be unconventional, but we need it because refresh tokens implementation is limited due to OS limitations. also revoke token will prevent misuse (maybe, idk)
             iat: now.timestamp(),
         };
 
@@ -138,24 +144,47 @@ impl Auth {
         Ok(())
     }
 
-    // // TODO: implement token revocation in GraphQL models (mutation) or skip implementation if it takes too much time/resources.
-    // pub fn revoke_token(token: &str) -> Result<(), jsonwebtoken::errors::Error> {
-    //     let claims = Auth::verify_token(token)?;
-    //     let now = Utc::now();
-    //     let new_claims = Claims {
-    //         user_id: claims.user_id,
-    //         role: claims.role,
-    //         exp: now.timestamp(),
-    //         iat: now.timestamp(),
-    //     };
-    //
-    //     encode(
-    //         &Header::default(),
-    //         &new_claims,
-    //         &EncodingKey::from_secret("your_secret_key".as_ref()),
-    //     )?;
-    //     Ok(())
-    // }
+    pub async fn send_email_verification(
+        email: String,
+        id: i32,
+        role: String,
+    ) -> Result<String, &'static str> {
+        let token = Self::create_token(id, role, Duration::minutes(15))
+            .map_err(|_| "Failed to create token")?;
+
+        let port = env::var("PORT").map_err(|_| "PORT must be set")?;
+
+        // Build a simple multipart message
+        let message = MessageBuilder::new()
+            .from((
+                "Verify Mail Id Bitte",
+                "postmaster@testing.giripriyadarshan.com",
+            ))
+            .to(email)
+            .subject("911 email verification")
+            .html_body(
+                "<a href=\"http://localhost:".to_string()
+                    + port.as_str()
+                    + "/verify/"
+                    + token.as_str()
+                    + "\">Click here to verify your email</a>",
+            );
+
+        // Connect to the SMTP submissions port, upgrade to TLS and
+        // authenticate using the provided credentials.
+        let smtp_username = env::var("SMTP_USERNAME").expect("SMTP_USERNAME must be set");
+        let smtp_password = env::var("SMTP_PASSWORD").expect("SMTP_PASSWORD must be set");
+        SmtpClientBuilder::new("smtp.mailgun.org", 587)
+            .implicit_tls(false)
+            .credentials((smtp_username.as_str(), smtp_password.as_str()))
+            .connect()
+            .await
+            .expect("Failed to connect to SMTP server")
+            .send(message)
+            .await
+            .expect("Failed to send email");
+        Ok("Email verification sent".to_string())
+    }
 }
 
 pub const ROLE_SUPPLIER: &str = "supplier";

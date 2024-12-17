@@ -12,10 +12,10 @@ chrono = { version = "0.4.38", features = ["serde"] }
 dotenv = "0.15.0"
 jsonwebtoken = "9.3.0"
 lazy-regex = "3.3.0"
-redis = { version = "0.27.6", features = ["tokio-comp"] }
 sea-orm = { version = "1.1.2", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros"] }
 serde = { version = "1.0.215", features = ["derive"] }
 thiserror = "2.0.4"
 tokio = { version = "1.42.0", features = ["full"] }
 tower-http = { version = "0.6.2", features = ["cors"] }
 tower = "0.5.2"
+mail-send = "0.4.9"

@@ -3,8 +3,10 @@ mod entity;
 mod error;
 mod graphql;
 mod models;
+mod verify_mail;
 
 use crate::error::handle_error;
+use crate::verify_mail::verify_mail;
 use crate::{
     error::AppError,
     graphql::schema::{graphiql, graphql_handler},
@@ -22,7 +24,6 @@ use axum::{
     BoxError, Extension, Router,
 };
 use dotenv::dotenv;
-use redis::Client as RedisClient;
 use sea_orm::Database;
 use std::env;
 use tokio::net::TcpListener;
@@ -44,13 +45,7 @@ async fn main() -> Result<(), AppError> {
             context: None,
         })?;
 
-    // Initialize Redis
-    let redis_url = env::var("REDIS_URL")
-        .map_err(|_| AppError::Internal("REDIS_URL must be set".to_string()))?;
-    let redis = RedisClient::open(redis_url)
-        .map_err(|e| AppError::Internal(format!("Failed to connect to Redis: {}", e)))?;
-
-    let schema = graphql::schema::create_schema(db.clone(), redis.clone());
+    let schema = graphql::schema::create_schema(db.clone());
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods([Method::GET, Method::POST])
@@ -67,14 +62,22 @@ async fn main() -> Result<(), AppError> {
         .layer(HandleErrorLayer::new(handle_error))
         .layer(cors);
 
-    let app = Router::new().route(
-        "/",
-        get(graphiql)
-            .post(graphql_handler)
-            .layer::<_, BoxError>(Extension(schema))
-            .layer(Identity::new())
-            .layer(middleware_stack),
-    );
+    let app = Router::new()
+        .route(
+            "/",
+            get(graphiql)
+                .post(graphql_handler)
+                .layer::<_, BoxError>(Extension(schema))
+                .layer(Identity::new())
+                .layer(middleware_stack.clone()),
+        )
+        .route(
+            "/verify/:token",
+            get(verify_mail)
+                .layer::<_, BoxError>(Extension(db))
+                .layer(Identity::new())
+                .layer(middleware_stack),
+        );
 
     let port = env::var("PORT").map_err(|_| AppError::Internal("PORT must be set".to_string()))?;
     println!("GraphQL server running at http://localhost:{}/", port);
