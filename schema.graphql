@@ -110,6 +110,7 @@ type MutationRoot {
   login(loginDetails: LoginUser!): String!
   refreshToken: String!
   changePassword(oldPassword: String!, newPassword: String!): String!
+  sendEmailVerification: String!
 }
 
 """
