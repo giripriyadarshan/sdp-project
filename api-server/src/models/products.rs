@@ -108,6 +108,10 @@ pub fn create_product_model(
         description: Set(input.description.clone()),
         base_price: Set(input.base_price.parse::<f32>().unwrap().try_into().unwrap()),
         supplier_id: Set(Some(supplier_id)),
+        category_id: Set(input.category_id),
+        base_product_id: Set(input.base_product_id),
+        media_paths: Set(input.media_paths),
+        stock_quantity: Set(input.stock_quantity),
         ..Default::default()
     })
 }
