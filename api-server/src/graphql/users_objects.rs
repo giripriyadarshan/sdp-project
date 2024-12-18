@@ -1,3 +1,4 @@
+use crate::models::user::AuthUser;
 use crate::{
     auth::{Auth, RoleGuard, ROLE_CUSTOMER, ROLE_SUPPLIER},
     graphql::macros::role_guard,
@@ -187,7 +188,7 @@ impl UsersMutation {
         &self,
         ctx: &Context<'_>,
         login_details: LoginUser,
-    ) -> Result<String, async_graphql::Error> {
+    ) -> Result<AuthUser, async_graphql::Error> {
         use crate::entity::{prelude::Users as UsersEntity, users};
 
         let db = ctx.data::<DatabaseConnection>()?;
@@ -200,20 +201,21 @@ impl UsersMutation {
             .map(|user| user.into())
             .unwrap();
 
-        match Auth::verify_password(&login_details.password, &user.password) {
+        let token = match Auth::verify_password(&login_details.password, &user.password) {
             Ok(verification_status) => {
                 if verification_status {
-                    Ok(Auth::create_token(
-                        user.user_id,
-                        user.role,
-                        Duration::days(30),
-                    )?)
+                    Auth::create_token(user.user_id, user.role.clone(), Duration::days(30))?
                 } else {
-                    Err("Invalid password".into())
+                    return Err("Invalid password".into());
                 }
             }
-            Err(_) => Err("Password not readable, please reset password".into()),
-        }
+            Err(_) => return Err("Password not readable, please reset password".into()),
+        };
+
+        Ok(AuthUser {
+            user_role: user.role,
+            token,
+        })
     }
 
     #[graphql(guard = "role_guard!(ROLE_CUSTOMER, ROLE_SUPPLIER)")]

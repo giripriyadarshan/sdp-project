@@ -60,6 +60,7 @@ pub struct RegisterPaymentMethod {
     pub ifsc_code: Option<String>,
     pub card_type_name: Option<String>,
 }
+
 pub async fn create_payment_method(
     customer_id: i32,
     is_default: Option<bool>,

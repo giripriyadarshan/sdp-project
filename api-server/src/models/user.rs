@@ -40,6 +40,12 @@ pub struct LoginUser {
     pub password: String,
 }
 
+#[derive(SimpleObject)]
+pub struct AuthUser {
+    pub token: String,
+    pub user_role: String,
+}
+
 #[derive(InputObject)]
 pub struct RegisterUser {
     pub email: String,
