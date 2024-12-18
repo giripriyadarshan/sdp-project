@@ -73,7 +73,7 @@ impl CartsMutation {
         ctx: &Context<'_>,
         product_id: i32,
         quantity: i32,
-    ) -> Result<String, async_graphql::Error> {
+    ) -> Result<i32, async_graphql::Error> {
         use crate::entity::{
             cart_items,
             prelude::{CartItems as CartItemsEntity, ShoppingCarts as ShoppingCartsEntity},
@@ -114,7 +114,7 @@ impl CartsMutation {
         CartItemsEntity::insert(cart_item).exec(&txn).await?;
         txn.commit().await?;
 
-        Ok("Product added to cart".to_string())
+        Ok(cart.cart_id)
     }
 
     #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
