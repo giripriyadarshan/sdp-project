@@ -1,3 +1,5 @@
+// This file contains few comments which may feel out of place, but they are here only to explain the concepts of OOP in Rust.
+
 use crate::error::{AppError, AuthErrorCode};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -23,6 +25,7 @@ pub struct Claims {
 pub struct Auth;
 
 impl Auth {
+    // Abstraction
     pub fn hash_password(password: &str) -> Result<String, AppError> {
         let salt = SaltString::generate(&mut OsRng);
         let secret_key = env::var("PASSWORD_SECRET").unwrap().as_bytes().to_owned();
@@ -190,11 +193,15 @@ impl Auth {
 pub const ROLE_SUPPLIER: &str = "supplier";
 pub const ROLE_CUSTOMER: &str = "customer";
 
+// struct name is equivalent to a class name in OOP
+// it consists of data members
 pub struct RoleGuard {
     pub allowed_roles: Vec<String>,
 }
 
+// data functions are implemented using impl keyword
 impl RoleGuard {
+    // Encapsulation using a constructor like function to bind the member data to its member functions
     pub fn new(roles: Vec<&str>) -> Self {
         Self {
             allowed_roles: roles.into_iter().map(String::from).collect(),
@@ -202,7 +209,9 @@ impl RoleGuard {
     }
 }
 
+// Inheritance
 impl Guard for RoleGuard {
+    // Polymorphism
     async fn check(&self, ctx: &Context<'_>) -> Result<()> {
         let token = ctx.data_opt::<String>().ok_or(AppError::Auth {
             message: "No authorization token found".to_string(),
@@ -212,6 +221,7 @@ impl Guard for RoleGuard {
 
         let claims = Auth::verify_token(token)?;
 
+        // Open recursion using 'self' keyword
         if self.allowed_roles.contains(&claims.role) {
             Ok(())
         } else {
