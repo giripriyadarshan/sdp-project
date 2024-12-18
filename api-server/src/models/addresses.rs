@@ -1,3 +1,4 @@
+use crate::entity::address_types::Model as AddressTypesModel;
 use crate::entity::addresses::{self, Model as AddressModel};
 use async_graphql::{InputObject, SimpleObject};
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
@@ -60,8 +61,17 @@ impl RegisterAddress {
 
 #[derive(SimpleObject)]
 pub struct AddressType {
-    address_type_id: i64,
+    address_type_id: i32,
     name: String,
+}
+
+impl From<AddressTypesModel> for AddressType {
+    fn from(address_type: AddressTypesModel) -> Self {
+        Self {
+            address_type_id: address_type.address_type_id,
+            name: address_type.name,
+        }
+    }
 }
 
 #[derive(InputObject)]

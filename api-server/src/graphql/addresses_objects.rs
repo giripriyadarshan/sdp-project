@@ -1,3 +1,4 @@
+use crate::models::addresses::AddressType;
 use crate::{
     auth::{Auth, RoleGuard, ROLE_CUSTOMER},
     graphql::macros::role_guard,
@@ -78,6 +79,23 @@ impl AddressesQuery {
             .collect();
 
         Ok(addresses)
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
+    async fn address_type(
+        &self,
+        ctx: &Context<'_>,
+        address_type_id: i32,
+    ) -> Result<AddressType, async_graphql::Error> {
+        use crate::entity::prelude::AddressTypes as AddressTypesEntity;
+        let db = ctx.data::<DatabaseConnection>()?;
+
+        let address_type = AddressTypesEntity::find_by_id(address_type_id)
+            .one(db)
+            .await?
+            .ok_or("Address type not found")?;
+
+        Ok(address_type.into())
     }
 }
 
