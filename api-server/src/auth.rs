@@ -164,7 +164,7 @@ impl Auth {
                 "postmaster@testing.giripriyadarshan.com",
             ))
             .to(email)
-            .subject("911 email verification")
+            .subject("Nine11 email verification")
             .html_body(
                 "<a href=\"http://localhost:".to_string()
                     + port.as_str()
