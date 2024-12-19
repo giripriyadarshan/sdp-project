@@ -11,6 +11,7 @@ use crate::{
     },
 };
 use async_graphql::{Context, Object};
+use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, ModelTrait, QueryFilter, TransactionTrait,
 };
@@ -54,7 +55,13 @@ impl ProductsMutation {
             .ok_or("No authorization token found")?;
         let supplier_id = get_customer_supplier_id(db, token, ROLE_SUPPLIER).await?;
         check_if_supplier_owns_product(db, supplier_id, product_id).await?;
-        let product = create_product_model(input, supplier_id)?;
+        let mut product = create_product_model(input, supplier_id)?;
+        let get_product_with_id = ProductsEntity::find_by_id(product_id)
+            .one(db)
+            .await?
+            .ok_or("Product not found")?;
+
+        product.product_id = Set(get_product_with_id.product_id);
         let update_product = ProductsEntity::update(product)
             .filter(products::Column::ProductId.eq(product_id))
             .exec(db)
