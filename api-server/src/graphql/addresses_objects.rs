@@ -31,8 +31,11 @@ impl AddressesQuery {
 
         let user_id = Auth::verify_token(token)?.user_id.parse::<i32>()?;
         // this query includes inner join with users, customers and addresses tables
-        // this query can be written entirely with SELECT and WHERE. Basically, get customer_id using user_id in customer table and then insert it into addresses table. But this has the keyword "JOIN" in it, so we'll go with this one.
-        // For reference: SELECT * FROM addresses WHERE customer_id = (SELECT customer_id FROM customers WHERE user_id = $1);
+        // this query can be written entirely with SELECT and WHERE.
+        // Basically, get customer_id using user_id in customer table and then insert it into addresses table.
+        // But this has the keyword "JOIN" in it, so we'll go with this one.
+        // For reference:
+        // SELECT * FROM addresses WHERE customer_id = (SELECT customer_id FROM customers WHERE user_id = $1);
         let address = db
             .query_all(Statement::from_sql_and_values(
                 DbBackend::Postgres,

@@ -10,8 +10,8 @@ use crate::{
 };
 use async_graphql::{Context, Object};
 use sea_orm::{
-    prelude::Decimal, ActiveValue::Set, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
-    TransactionTrait,
+    prelude::Decimal, ActiveModelTrait, ActiveValue::Set, ColumnTrait, DatabaseConnection,
+    EntityTrait, QueryFilter, TransactionTrait,
 };
 
 #[derive(Default)]
@@ -248,5 +248,71 @@ impl OrdersMutation {
         txn.commit().await?;
 
         Ok("Order status updated".to_string())
+    }
+
+    #[graphql(guard = "role_guard!(ROLE_CUSTOMER)")]
+    async fn cancel_order(
+        &self,
+        ctx: &Context<'_>,
+        order_id: i32,
+    ) -> Result<String, async_graphql::Error> {
+        use crate::entity::{
+            order_items, orders,
+            prelude::{Orders as OrdersEntity, Products as ProductsEntity},
+            products,
+        };
+        let db = ctx.data::<DatabaseConnection>()?;
+        let token = ctx
+            .data_opt::<String>()
+            .ok_or("No authorization token found")?;
+        let txn = db.begin().await?;
+
+        let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
+
+        let order: orders::Model = OrdersEntity::find_by_id(order_id)
+            .one(&txn)
+            .await
+            .map_err(|_| "Order not found")?
+            .unwrap();
+
+        if order.customer_id != customer_id {
+            return Err("Unauthorized".into());
+        }
+
+        if order.status == "CANCELLED" {
+            return Err("Order already cancelled".into());
+        }
+
+        let order_items_list = order_items::Entity::find()
+            .filter(order_items::Column::OrderId.eq(order_id))
+            .all(&txn)
+            .await?;
+
+        for order_item in order_items_list {
+            let product: products::Model = ProductsEntity::find_by_id(order_item.product_id)
+                .one(&txn)
+                .await?
+                .unwrap();
+
+            let product: products::ActiveModel = products::ActiveModel {
+                stock_quantity: Set(product.stock_quantity + order_item.quantity),
+                ..product.into()
+            };
+
+            ProductsEntity::update(product)
+                .filter(products::Column::ProductId.eq(order_item.product_id))
+                .exec(&txn)
+                .await?;
+        }
+
+        let mut order: orders::ActiveModel = order.into();
+
+        order.status = Set("CANCELLED".to_string());
+
+        order.update(&txn).await?;
+
+        txn.commit().await?;
+
+        Ok("Order cancelled".to_string())
     }
 }

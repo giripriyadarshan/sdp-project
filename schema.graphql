@@ -29,6 +29,16 @@ type Addresses {
   streetAddress: String!
 }
 
+type AddressType {
+  addressTypeId: Int!
+  name: String!
+}
+
+type AuthUser {
+  token: String!
+  userRole: String!
+}
+
 type Bills {
   billDate: DateTime
   billId: Int!
@@ -88,11 +98,12 @@ type MutationRoot {
   updateAddress(addressId: Int!, addressTypeId: Int!, input: RegisterAddress!): Addresses!
   deleteAddress(addressId: Int!): String!
   updateAddressType(addressTypeId: Int!, name: String!): String!
-  addToCart(productId: Int!, quantity: Int!): String!
+  addToCart(productId: Int!, quantity: Int!): Int!
   updateCartItemQuantity(productId: Int!, quantity: Int!, cartId: Int!): String!
   removeFromCart(productId: Int!): String!
   registerOrder(input: RegisterOrder!): Orders!
   updateOrderStatus(orderId: Int!, status: String!): String!
+  cancelOrder(orderId: Int!): String!
   registerPaymentMethod(input: RegisterPaymentMethod!): PaymentMethods!
   updatePaymentMethod(paymentMethodId: Int!, input: RegisterPaymentMethod!): PaymentMethods!
   registerProduct(input: RegisterProduct!): Products!
@@ -107,7 +118,7 @@ type MutationRoot {
   registerUser(input: RegisterUser!): String!
   registerCustomer(input: RegisterCustomer!): Customers!
   registerSupplier(input: RegisterSupplier!): Suppliers!
-  login(loginDetails: LoginUser!): String!
+  login(loginDetails: LoginUser!): AuthUser!
   refreshToken: String!
   changePassword(oldPassword: String!, newPassword: String!): String!
   sendEmailVerification: String!
@@ -200,6 +211,7 @@ type ProductsPaginate {
 
 type QueryRoot {
   addresses: [Addresses!]!
+  addressType(addressTypeId: Int!): AddressType!
   cartItems: [Products!]!
   orders: [Orders!]!
   orderItems(orderId: Int!): [Products!]!
