@@ -207,8 +207,8 @@ impl AddressesMutation {
             .await?
             .ok_or("Address type not found")?;
 
-        address_type.delete(&txn).await?;
         address.delete(&txn).await?;
+        address_type.delete(&txn).await?;
 
         txn.commit().await?;
 
