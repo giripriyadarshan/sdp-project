@@ -71,10 +71,13 @@ impl UsersQuery {
             .ok_or("No authorization token found")?;
 
         let supplier = SuppliersEntity::find()
-            .filter(suppliers::Column::UserId.eq(Auth::verify_token(token)?.user_id))
+            .filter(
+                suppliers::Column::UserId
+                    .eq(Auth::verify_token(token)?.user_id.parse::<i32>().unwrap()),
+            )
             .one(db)
             .await
-            .map_err(|_| "Supplier not found")?
+            .map_err(|e| format!("{}", e))?
             .map(|supplier| supplier.into())
             .unwrap();
 
