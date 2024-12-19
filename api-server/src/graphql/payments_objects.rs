@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use async_graphql::{Context, Object};
+use sea_orm::ActiveValue::Set;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait};
 
 #[derive(Default)]
@@ -106,7 +107,9 @@ impl PaymentsMutation {
         let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
         let is_default: Option<bool> = Some(input.is_default.unwrap_or(false));
 
-        let payment_method = create_payment_method(customer_id, is_default, input, &txn).await?;
+        let mut payment_method =
+            create_payment_method(customer_id, is_default, input, &txn).await?;
+        payment_method.payment_method_id = Set(payment_method_id);
 
         let update_payment_method = PaymentMethodsEntity::update(payment_method)
             .filter(payment_methods::Column::PaymentMethodId.eq(payment_method_id))

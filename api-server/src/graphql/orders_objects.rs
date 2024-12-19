@@ -235,15 +235,10 @@ impl OrdersMutation {
             .map_err(|_| "Order not found")?
             .unwrap();
 
-        let update_order = orders::ActiveModel {
-            status: Set(status),
-            ..order.into()
-        };
+        let mut update_order: orders::ActiveModel = order.into();
+        update_order.status = Set(status);
 
-        OrdersEntity::update(update_order)
-            .filter(orders::Column::OrderId.eq(order_id))
-            .exec(&txn)
-            .await?;
+        update_order.update(&txn).await?;
 
         txn.commit().await?;
 

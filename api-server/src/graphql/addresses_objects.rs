@@ -158,7 +158,8 @@ impl AddressesMutation {
         let txn = db.begin().await?;
         let customer_id = get_customer_supplier_id(db, token, ROLE_CUSTOMER).await?;
 
-        let address = create_address(input, customer_id, address_type_id, &txn).await?;
+        let mut address = create_address(input, customer_id, address_type_id, &txn).await?;
+        address.address_id = Set(address_id);
 
         let update_address = AddressesEntity::update(address)
             .filter(addresses::Column::AddressId.eq(address_id))

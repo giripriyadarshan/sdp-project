@@ -56,12 +56,8 @@ impl ProductsMutation {
         let supplier_id = get_customer_supplier_id(db, token, ROLE_SUPPLIER).await?;
         check_if_supplier_owns_product(db, supplier_id, product_id).await?;
         let mut product = create_product_model(input, supplier_id)?;
-        let get_product_with_id = ProductsEntity::find_by_id(product_id)
-            .one(db)
-            .await?
-            .ok_or("Product not found")?;
 
-        product.product_id = Set(get_product_with_id.product_id);
+        product.product_id = Set(product_id);
         let update_product = ProductsEntity::update(product)
             .filter(products::Column::ProductId.eq(product_id))
             .exec(db)
@@ -228,7 +224,9 @@ impl ProductsMutation {
 
         check_if_supplier_owns_product(db, supplier_id, input.product_id).await?;
 
-        let discount = create_discount_model(input)?;
+        let mut discount = create_discount_model(input)?;
+        discount.discount_id = Set(discount_id);
+
         let update_discount = DiscountsEntity::update(discount)
             .filter(discounts::Column::DiscountId.eq(discount_id))
             .exec(db)
