@@ -1,0 +1,348 @@
+schema {
+  query: QueryRoot
+  mutation: MutationRoot
+}
+
+"""
+Indicates that an Input Object is a OneOf Input Object (and thus requires
+                        exactly one of its field be provided)
+"""
+directive @oneOf on INPUT_OBJECT
+
+"""
+Provides a scalar specification URL for specifying the behavior of custom scalar types.
+"""
+directive @specifiedBy(
+  """URL that specifies the behavior of this scalar."""
+  url: String!
+) on SCALAR
+
+type Addresses {
+  addressId: Int!
+  addressTypeId: Int
+  city: String!
+  country: String!
+  customerId: Int!
+  isDefault: Boolean
+  postalCode: String!
+  state: String
+  streetAddress: String!
+}
+
+type AddressType {
+  addressTypeId: Int!
+  name: String!
+}
+
+type AuthUser {
+  token: String!
+  userRole: String!
+}
+
+type Bills {
+  billDate: DateTime
+  billId: Int!
+  orderId: Int!
+  paymentStatus: String!
+  totalAmount: Float!
+}
+
+type CardTypes {
+  cardTypeId: Int!
+  name: String!
+}
+
+type Categories {
+  categoryId: Int!
+  name: String!
+  parentCategoryId: Int
+}
+
+type Customers {
+  customerId: Int!
+  firstName: String!
+  lastName: String!
+  registrationDate: DateTime
+  userId: Int!
+}
+
+"""
+Implement the DateTime<FixedOffset> scalar
+
+The input/output is a string in RFC3339 format.
+"""
+scalar DateTime
+
+type Discounts {
+  discountId: Int!
+  code: String
+  description: String
+  discountValue: Float!
+  discountType: String!
+  validFrom: DateTime
+  validUntil: DateTime
+  maxUses: Int
+  timesUsed: Int
+  productId: Int
+  categoryId: Int
+  minQuantity: Int
+}
+
+input LoginUser {
+  email: String!
+  password: String!
+}
+
+type MutationRoot {
+  registerAddress(input: RegisterAddress!): Addresses!
+  updateAddress(addressId: Int!, addressTypeId: Int!, input: RegisterAddress!): Addresses!
+  deleteAddress(addressId: Int!): String!
+  updateAddressType(addressTypeId: Int!, name: String!): String!
+  addToCart(productId: Int!, quantity: Int!): Int!
+  updateCartItemQuantity(productId: Int!, quantity: Int!, cartId: Int!): String!
+  removeFromCart(productId: Int!): String!
+  registerOrder(input: RegisterOrder!): Orders!
+  updateOrderStatus(orderId: Int!, status: String!): String!
+  cancelOrder(orderId: Int!): String!
+  registerPaymentMethod(input: RegisterPaymentMethod!): PaymentMethods!
+  updatePaymentMethod(paymentMethodId: Int!, input: RegisterPaymentMethod!): PaymentMethods!
+  registerProduct(input: RegisterProduct!): Products!
+  updateProduct(productId: Int!, input: RegisterProduct!): Products!
+  deleteProduct(productId: Int!): String!
+  registerReview(input: RegisterReview!): Reviews!
+  updateReview(reviewId: Int!, input: RegisterReview!): Reviews!
+  deleteReview(reviewId: Int!): String!
+  registerDiscount(input: RegisterDiscount!): Discounts!
+  updateDiscount(discountId: Int!, input: RegisterDiscount!): Discounts!
+  deleteDiscount(discountId: Int!, productId: Int!): String!
+  registerUser(input: RegisterUser!): String!
+  registerCustomer(input: RegisterCustomer!): Customers!
+  registerSupplier(input: RegisterSupplier!): Suppliers!
+  login(loginDetails: LoginUser!): AuthUser!
+  refreshToken: String!
+  changePassword(oldPassword: String!, newPassword: String!): String!
+  sendEmailVerification: String!
+}
+
+"""
+ISO 8601 calendar date without timezone.
+Format: %Y-%m-%d
+
+# Examples
+
+* `1994-11-13`
+* `2000-02-24`
+"""
+scalar NaiveDate
+
+input OrderAndPagination {
+  orderBy: OrderBy!
+  pagination: Pagination!
+}
+
+input OrderBy {
+  column: OrderByColumn!
+  order: OrderByOrder!
+}
+
+enum OrderByColumn {
+  DATE
+  AMOUNT
+}
+
+enum OrderByOrder {
+  ASC
+  DESC
+}
+
+type Orders {
+  orderId: Int!
+  customerId: Int!
+  orderDate: DateTime
+  totalAmount: Float!
+  status: String!
+  shippingAddressId: Int!
+  paymentMethodId: Int!
+  discountId: Int
+}
+
+type PageInfo {
+  totalPages: Int!
+  totalItems: Int!
+}
+
+input Pagination {
+  page: Int!
+  pageSize: Int!
+}
+
+type PaymentMethods {
+  paymentMethodId: Int!
+  customerId: Int!
+  paymentType: String!
+  isDefault: Boolean
+  bankName: String
+  accountHolderName: String
+  cardNumber: String
+  cardExpirationDate: NaiveDate
+  iban: String
+  upiId: String
+  bankAccountNumber: String
+  ifscCode: String
+  cardTypeId: Int
+}
+
+type Products {
+  productId: Int!
+  name: String!
+  description: String
+  basePrice: String!
+  categoryId: Int
+  supplierId: Int
+  stockQuantity: Int!
+  mediaPaths: [String!]
+  baseProductId: Int
+}
+
+type ProductsPaginate {
+  products: [Products!]!
+  pageInfo: PageInfo!
+}
+
+type QueryRoot {
+  addresses: [Addresses!]!
+  addressType(addressTypeId: Int!): AddressType!
+  cartItems: [Products!]!
+  orders: [Orders!]!
+  orderItems(orderId: Int!): [Products!]!
+  bills: [Bills!]!
+  paymentMethods: [PaymentMethods!]!
+  cardType(cardTypeId: Int!): CardTypes!
+  productsWithId(categoryId: Int, supplierId: Int, baseProductId: Int, productId: Int, paginator: OrderAndPagination!): ProductsPaginate!
+  productsWithName(name: String!, paginator: OrderAndPagination!): ProductsPaginate!
+  categories: [Categories!]!
+  reviewsForProduct(productId: Int!, paginator: OrderAndPagination!): ReviewsPaginate!
+  discounts: [Discounts!]!
+  discountsOnProduct(productId: Int!): [Discounts!]!
+  getUser: Users!
+  customerProfile: Customers!
+  supplierProfile: Suppliers!
+}
+
+input RegisterAddress {
+  addressType: String!
+  city: String!
+  country: String!
+  customerId: Int!
+  isDefault: Boolean!
+  postalCode: String!
+  state: String!
+  streetAddress: String!
+}
+
+input RegisterCustomer {
+  firstName: String!
+  lastName: String!
+}
+
+input RegisterDiscount {
+  code: String
+  description: String
+  discountValue: Int!
+  discountType: String!
+  validFrom: DateTime
+  validUntil: DateTime
+  maxUses: Int
+  timesUsed: Int
+  productId: Int!
+  categoryId: Int
+  minQuantity: Int
+}
+
+input RegisterOrder {
+  shippingAddressId: Int!
+  paymentMethodId: Int!
+  discountCode: String
+  orderItems: [RegisterOrderItem!]!
+}
+
+input RegisterOrderItem {
+  productId: Int!
+  quantity: Int!
+}
+
+input RegisterPaymentMethod {
+  paymentType: String!
+  isDefault: Boolean
+  bankName: String
+  accountHolderName: String
+  cardNumber: String
+  cardExpirationDate: NaiveDate
+  iban: String
+  upiId: String
+  bankAccountNumber: String
+  ifscCode: String
+  cardTypeName: String
+}
+
+input RegisterProduct {
+  name: String!
+  description: String
+  basePrice: String!
+  categoryId: Int
+  supplierId: Int
+  stockQuantity: Int!
+  mediaPaths: [String!]
+  baseProductId: Int
+}
+
+input RegisterReview {
+  productId: Int!
+  rating: Int
+  reviewText: String
+  reviewDate: DateTime
+  mediaPaths: [String!]
+}
+
+input RegisterSupplier {
+  name: String!
+  contactPhone: String
+}
+
+input RegisterUser {
+  email: String!
+  password: String!
+  role: String!
+}
+
+type Reviews {
+  reviewId: Int!
+  customerId: Int!
+  productId: Int!
+  rating: Int
+  reviewText: String
+  reviewDate: DateTime
+  mediaPaths: [String!]
+}
+
+type ReviewsPaginate {
+  reviews: [Reviews!]!
+  pageInfo: PageInfo!
+}
+
+type Suppliers {
+  supplierId: Int!
+  name: String!
+  contactPhone: String
+  userId: Int!
+}
+
+type Users {
+  userId: Int!
+  email: String!
+  password: String!
+  role: String!
+  createdAt: DateTime
+  emailVerified: Boolean
+}
+
